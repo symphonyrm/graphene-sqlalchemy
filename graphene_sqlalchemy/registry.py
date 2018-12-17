@@ -1,21 +1,22 @@
+from functools import partial
+
 class Registry(object):
-    def __init__(self):
+    def __init__(self, super_class):
+        self.super_class = super_class
         self._registry = {}
-        self._registry_models = {}
         self._registry_composites = {}
 
     def register(self, cls):
-        from .types import SQLAlchemyObjectType
-
-        assert issubclass(cls, SQLAlchemyObjectType), (
-            "Only classes of type SQLAlchemyObjectType can be registered, "
+        assert issubclass(cls, self.super_class), (
+            "Only classes of type {} can be registered, "
             'received "{}"'
-        ).format(cls.__name__)
+        ).format(self.super_class, cls.__name__)
         assert cls._meta.registry == self, "Registry for a Model have to match."
-        # assert self.get_type_for_model(cls._meta.model) in [None, cls], (
-        #     'SQLAlchemy model "{}" already associated with '
-        #     'another type "{}".'
-        # ).format(cls._meta.model, self._registry[cls._meta.model])
+        assert self.get_type_for_model(cls._meta.model) in [None, cls], (
+            'SQLAlchemy model "{}" already associated with '
+            'another type "{}".'
+        ).format(cls._meta.model, self._registry[cls._meta.model])
+
         self._registry[cls._meta.model] = cls
 
     def get_type_for_model(self, model):
@@ -28,16 +29,6 @@ class Registry(object):
         return self._registry_composites.get(composite)
 
 
-registry = None
-
-
-def get_global_registry():
-    global registry
-    if not registry:
-        registry = Registry()
-    return registry
-
-
-def reset_global_registry():
-    global registry
-    registry = None
+def get_registry(namespace, super_class):
+    namespace.setdefault(super_class, Registry(super_class))
+    return namespace[super_class]
