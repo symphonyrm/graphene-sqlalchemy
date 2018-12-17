@@ -41,6 +41,11 @@ setup(
         "graphene>=2.1.3",
         "SQLAlchemy",
         "singledispatch>=3.4.0.3",
+        "multipledispatch==0.6.0",
     ],
-    tests_require=["pytest>=2.7.2", "mock", "sqlalchemy_utils"],
+    tests_require=[
+        "pytest>=2.7.2",
+        "mock",
+        "sqlalchemy_utils"
+    ],
 )
