@@ -44,10 +44,17 @@ def convert_sqlalchemy_type(
     cls: BaseType,
     type: StringLike,
     column: Column
-) -> String:
-    return String(
-        description=get_doc(column), required=not (is_nullable(column, cls))
-    )
+) -> Union[ID, String]:
+    if column.primary_key or column.foreign_keys:
+        return ID(
+            description=get_doc(column),
+            required=not (is_nullable(column, cls)),
+        )
+    else:
+        return String(
+            description=get_doc(column),
+            required=not (is_nullable(column, cls))
+        )
 
 
 @dispatch()
@@ -67,7 +74,7 @@ def convert_sqlalchemy_type(
     type: IntLike,
     column: Column
 ) -> Union[ID, Int]:
-    if column.primary_key:
+    if column.primary_key or column.foreign_keys:
         return ID(
             description=get_doc(column),
             required=not (is_nullable(column, cls)),
@@ -97,7 +104,8 @@ def convert_sqlalchemy_type(
     column: Column
 ) -> Float:
     return Float(
-        description=get_doc(column), required=not (is_nullable(column, cls))
+        description=get_doc(column),
+        required=not (is_nullable(column, cls))
     )
 
 
