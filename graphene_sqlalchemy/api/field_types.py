@@ -18,7 +18,6 @@ OrmLike = (
 FloatLike = (
     types.Float,
     types.Numeric,
-    types.BigInteger
 )
 
 
@@ -37,6 +36,7 @@ JSONLike = (
 
 
 StringLike = (
+    types.BigInteger,
     types.Date,
     types.Time,
     types.String,

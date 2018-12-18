@@ -13,7 +13,14 @@ except ImportError:
     ChoiceType = JSONType = ScalarListType = TSVectorType = object
 
 from .input_type import SQLAlchemyInputObjectType
-from ..api import dispatch, explicitly_ignored, get_registry
+from ..api import (
+    dispatch,
+    explicitly_ignored,
+    FloatLike,
+    get_registry,
+    IntLike,
+    StringLike,
+)
 
 
 class FilterInputObjectType(InputObjectType):
@@ -193,18 +200,6 @@ def convert_sqlalchemy_type(
     return func(cls, _type, column)
 
 
-StringLike = (
-    types.Date,
-    types.Time,
-    types.String,
-    types.Text,
-    types.Unicode,
-    types.UnicodeText,
-    postgresql.UUID,
-    postgresql.INET,
-    postgresql.CIDR,
-    TSVectorType
-)
 @dispatch()
 def convert_sqlalchemy_type(
     cls: SQLAlchemyFilterInputObjectType,
@@ -223,10 +218,6 @@ def convert_sqlalchemy_type(
     return DateTimeFilterInputObjectType()
 
 
-IntLike = (
-    types.SmallInteger,
-    types.Integer
-)
 @dispatch()
 def convert_sqlalchemy_type(
     cls: SQLAlchemyFilterInputObjectType,
@@ -245,11 +236,6 @@ def convert_sqlalchemy_type(
     return BooleanFilterInputObjectType()
 
 
-FloatLike = (
-    types.Float,
-    types.Numeric,
-    types.BigInteger
-)
 @dispatch()
 def convert_sqlalchemy_type(
     cls: SQLAlchemyFilterInputObjectType,
