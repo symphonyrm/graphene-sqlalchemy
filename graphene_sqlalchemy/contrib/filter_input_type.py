@@ -162,7 +162,7 @@ def convert_to_query(
     query = query.join(relationship)
     for item in filters:
         query = convert_to_query(model, query, item)
-    return query
+    return query.distinct()
 
 
 @dispatch()
