@@ -16,7 +16,7 @@ PrimitiveLike = (bool, datetime, float, int, str, type(None))
 @dispatch()
 def convert_to_instance(
     model: DeclarativeMeta,
-    inputs: BaseType
+    inputs: BaseType # TODO: Change this to an `InputObjectType`?
 ): # TODO: Add return type
     orm_prop_list = [
         (get_name(orm_prop), convert_name(orm_prop, inputs, model), orm_prop)

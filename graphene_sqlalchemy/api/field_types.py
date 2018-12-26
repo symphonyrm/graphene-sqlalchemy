@@ -1,5 +1,5 @@
 from sqlalchemy import Column, types
-from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import CompositeProperty, RelationshipProperty
 try:
@@ -12,6 +12,12 @@ OrmLike = (
     CompositeProperty,
     hybrid_property,
     RelationshipProperty,
+)
+
+
+BoolLike = (
+    types.Boolean,
+    mysql.types.BIT,
 )
 
 

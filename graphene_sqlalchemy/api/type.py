@@ -5,6 +5,7 @@ from graphene.types.base import BaseType
 
 from .doc import get_doc
 from .field_types import (
+    BoolLike,
     ChoiceType,
     Column,
     FloatLike,
@@ -35,7 +36,7 @@ def convert_sqlalchemy_type(
 def convert_sqlalchemy_type(cls, _type, column):
     raise Exception(
         "Don't know how to convert the SQLAlchemy field %s for class %s with type %s (%s)"
-        % (column, cls, type, column.__class__)
+        % (column, cls, _type, column.__class__)
     )
 
 
@@ -89,7 +90,7 @@ def convert_sqlalchemy_type(
 @dispatch()
 def convert_sqlalchemy_type(
     cls: BaseType,
-    type: types.Boolean,
+    type: BoolLike,
     column: Column
 ) -> Boolean:
     return Boolean(

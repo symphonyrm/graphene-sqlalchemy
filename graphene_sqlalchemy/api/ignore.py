@@ -41,7 +41,8 @@ def ignore_field(
     return explicitly_ignored(column.name, only_fields, exclude_fields)
 
 
-# TODO: Check if composite has a `name` field or similar. Would be surprising if not
+# TODO: Check if composite has a `name` field or similar. Would be surprising if not.
+#       Currently we don't use composite fields at all that I can tell.
 @dispatch()
 def ignore_field(
     composite: CompositeProperty,
