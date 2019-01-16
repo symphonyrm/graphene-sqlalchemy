@@ -25,7 +25,7 @@ class SQLAlchemyCreateInputObjectType(SQLAlchemyInputObjectType):
 @dispatch()
 def ignore_field(
     column: Column,
-    cls: SQLAlchemyInputObjectType,
+    cls: SQLAlchemyCreateInputObjectType,
     only_fields: list,
     exclude_fields: list,
 ) -> bool:
