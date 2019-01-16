@@ -18,9 +18,13 @@ from ..api import (
     explicitly_ignored,
     FloatLike,
     get_registry,
-    IntLike,
+    Int8Like,
+    Int16Like,
+    Int24Like,
+    Int32Like,
     StringLike,
 )
+from ..scalars import SignedInt32
 
 
 class FilterInputObjectType(InputObjectType):
@@ -52,15 +56,15 @@ class DateTimeFilterInputObjectType(FilterInputObjectType):
     notEqualTo = graphene.DateTime()
 
 
-class IntFilterInputObjectType(FilterInputObjectType):
-    equalTo = graphene.Int()
-    greaterThan = graphene.Int()
-    greaterThanOrEqualTo = graphene.Int()
-    inList = graphene.List(graphene.Int)
+class SignedInt32FilterInputObjectType(FilterInputObjectType):
+    equalTo = SignedInt32()
+    greaterThan = SignedInt32()
+    greaterThanOrEqualTo = SignedInt32()
+    inList = graphene.List(SignedInt32)
     isNull = graphene.Boolean()
-    lessThan = graphene.Int()
-    lessThanOrEqualTo = graphene.Int()
-    notEqualTo = graphene.Int()
+    lessThan = SignedInt32()
+    lessThanOrEqualTo = SignedInt32()
+    notEqualTo = SignedInt32()
 
 
 class FloatFilterInputObjectType(FilterInputObjectType):
@@ -221,10 +225,10 @@ def convert_sqlalchemy_type(
 @dispatch()
 def convert_sqlalchemy_type(
     cls: SQLAlchemyFilterInputObjectType,
-    type: IntLike,
+    type: (Int8Like, Int16Like, Int24Like, Int32Like),
     column: Column
-) -> IntFilterInputObjectType:
-    return IntFilterInputObjectType()
+) -> SignedInt32FilterInputObjectType:
+    return SignedInt32FilterInputObjectType()
 
 
 @dispatch()

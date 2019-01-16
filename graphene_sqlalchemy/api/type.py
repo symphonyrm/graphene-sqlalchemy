@@ -9,7 +9,10 @@ from .field_types import (
     ChoiceType,
     Column,
     FloatLike,
-    IntLike,
+    Int8Like,
+    Int16Like,
+    Int24Like,
+    Int32Like,
     JSONLike,
     postgresql,
     ScalarListType,
@@ -18,6 +21,16 @@ from .field_types import (
 )
 from .namespace import dispatch
 from .nullable import is_nullable
+from ..scalars import (
+    SignedInt8,
+    SignedInt16,
+    SignedInt24,
+    SignedInt32,
+    UnsignedInt8,
+    UnsignedInt16,
+    UnsignedInt24,
+    UnsignedInt32,
+)
 
 
 @dispatch()
@@ -72,16 +85,90 @@ def convert_sqlalchemy_type(
 @dispatch()
 def convert_sqlalchemy_type(
     cls: BaseType,
-    type: IntLike,
+    type: Int8Like,
     column: Column
-) -> Union[ID, Int]:
+) -> Union[ID, SignedInt8, UnsignedInt8]:
     if column.primary_key or column.foreign_keys:
         return ID(
             description=get_doc(column),
             required=not (is_nullable(column, cls)),
         )
+    elif getattr(type, 'unsigned', False):
+        return UnsignedInt8(
+            description=get_doc(column),
+            required=not (is_nullable(column, cls)),
+        )
     else:
-        return Int(
+        return SignedInt8(
+            description=get_doc(column),
+            required=not (is_nullable(column, cls)),
+        )
+
+
+@dispatch()
+def convert_sqlalchemy_type(
+    cls: BaseType,
+    type: Int16Like,
+    column: Column
+) -> Union[ID, SignedInt16, UnsignedInt16]:
+    if column.primary_key or column.foreign_keys:
+        return ID(
+            description=get_doc(column),
+            required=not (is_nullable(column, cls)),
+        )
+    elif getattr(type, 'unsigned', False):
+        return UnsignedInt16(
+            description=get_doc(column),
+            required=not (is_nullable(column, cls)),
+        )
+    else:
+        return SignedInt16(
+            description=get_doc(column),
+            required=not (is_nullable(column, cls)),
+        )
+
+
+@dispatch()
+def convert_sqlalchemy_type(
+    cls: BaseType,
+    type: Int24Like,
+    column: Column
+) -> Union[ID, SignedInt24, UnsignedInt24]:
+    if column.primary_key or column.foreign_keys:
+        return ID(
+            description=get_doc(column),
+            required=not (is_nullable(column, cls)),
+        )
+    elif getattr(type, 'unsigned', False):
+        return UnsignedInt24(
+            description=get_doc(column),
+            required=not (is_nullable(column, cls)),
+        )
+    else:
+        return SignedInt24(
+            description=get_doc(column),
+            required=not (is_nullable(column, cls)),
+        )
+
+
+@dispatch()
+def convert_sqlalchemy_type(
+    cls: BaseType,
+    type: Int32Like,
+    column: Column
+) -> Union[ID, SignedInt32, UnsignedInt32]:
+    if column.primary_key or column.foreign_keys:
+        return ID(
+            description=get_doc(column),
+            required=not (is_nullable(column, cls)),
+        )
+    elif getattr(type, 'unsigned', False):
+        return UnsignedInt32(
+            description=get_doc(column),
+            required=not (is_nullable(column, cls)),
+        )
+    else:
+        return SignedInt32(
             description=get_doc(column),
             required=not (is_nullable(column, cls)),
         )

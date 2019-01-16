@@ -27,9 +27,25 @@ FloatLike = (
 )
 
 
-IntLike = (
+Int8Like = (
+    mysql.types.TINYINT,
+)
+
+
+Int16Like = (
     types.SmallInteger,
-    types.Integer
+    mysql.types.SMALLINT,
+)
+
+
+Int24Like = (
+    mysql.types.MEDIUMINT,
+)
+
+
+Int32Like = (
+    types.Integer,
+    mysql.types.INTEGER,
 )
 
 
