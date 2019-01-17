@@ -82,14 +82,6 @@ class SQLAlchemyFilterInputObjectType(SQLAlchemyInputObjectType):
     class Meta:
         abstract = True
 
-    @classmethod
-    def __init_subclass_with_meta__(cls, registry=None, **options):
-        if not registry:
-            registry = get_registry(SQLAlchemyFilterInputObjectType)
-
-        super(SQLAlchemyFilterInputObjectType,
-              cls).__init_subclass_with_meta__(registry=registry, **options)
-
 
 def convert_comparator(comparator):
     if comparator == 'equalTo':
@@ -106,6 +98,11 @@ def convert_comparator(comparator):
         return 'le'
     elif comparator == 'notEqualTo':
         return 'ne'
+
+
+@dispatch()
+def set_registry_class(cls: SQLAlchemyFilterInputObjectType):
+    return SQLAlchemyFilterInputObjectType
 
 
 @dispatch()

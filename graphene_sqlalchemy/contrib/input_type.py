@@ -5,7 +5,7 @@ import graphene
 from graphene.types.utils import yank_fields_from_attrs
 
 from ..types import SQLAlchemyObjectTypeOptions
-from ..api import construct_fields, dispatch, get_registry
+from ..api import construct_fields, dispatch, get_registry, set_registry_class
 from ..utils import is_mapped_class
 
 
@@ -26,36 +26,32 @@ class SQLAlchemyInputObjectType(graphene.InputObjectType):
                     "You need to pass a valid SQLAlchemy Model in " '{}.Meta, received "{}".'
         ).format(cls.__name__, model)
 
-        # Provide a default registry based on this class if it has not
-        # already been provided.
-        if not registry:
-            registry = get_registry(SQLAlchemyInputObjectType)
-
-        if not _meta:
-            _meta = SQLAlchemyObjectTypeOptions(cls)
+        # Provide defaults for optional arguments.
+        registry = registry or get_registry(set_registry_class(cls))
+        _meta = _meta or SQLAlchemyObjectTypeOptions(cls)
 
         _meta.model = model
         _meta.registry = registry
+        _meta.fields = _meta.fields or {}
 
         # Automatically construct GraphQL fields from the SQLAlchemy model.
         # Excludes anything explicitly passed in via the `exclude_fields`
         # field on the class.
-        sqla_fields = yank_fields_from_attrs(
-            construct_fields(
-                model, registry,
-                only_fields, exclude_fields,
-                cls=cls),
-            _as=graphene.Field,
-        )
-
-        # Add all of the fields to the input type.
-        if _meta.fields:
-            _meta.fields.update(sqla_fields)
-        else:
-            _meta.fields = sqla_fields
+        _meta.fields.update(
+            yank_fields_from_attrs(
+                construct_fields(
+                    model, registry,
+                    only_fields, exclude_fields,
+                    cls=cls),
+                _as=graphene.Field))
 
         super(SQLAlchemyInputObjectType,
               cls).__init_subclass_with_meta__(_meta=_meta, **options)
 
         if not skip_registry:
             registry.register(cls)
+
+
+@dispatch()
+def set_registry_class(cls: SQLAlchemyInputObjectType):
+    return SQLAlchemyInputObjectType

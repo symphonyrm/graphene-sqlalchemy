@@ -27,7 +27,6 @@ def generate_type(model, _type, name, meta=None):
         _class = type(
             name,
             (_type,),
-            # TODO: Define submeta
             meta
         )
 

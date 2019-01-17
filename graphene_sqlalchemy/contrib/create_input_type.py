@@ -13,13 +13,10 @@ class SQLAlchemyCreateInputObjectType(SQLAlchemyInputObjectType):
     class Meta:
         abstract = True
 
-    @classmethod
-    def __init_subclass_with_meta__(cls, registry=None, **options):
-        if not registry:
-            registry = get_registry(SQLAlchemyCreateInputObjectType)
 
-        super(SQLAlchemyCreateInputObjectType,
-              cls).__init_subclass_with_meta__(registry=registry, **options)
+@dispatch()
+def set_registry_class(cls: SQLAlchemyCreateInputObjectType):
+    return SQLAlchemyCreateInputObjectType
 
 
 @dispatch()

@@ -11,13 +11,10 @@ class SQLAlchemyFilterByInputObjectType(SQLAlchemyInputObjectType):
     class Meta:
         abstract = True
 
-    @classmethod
-    def __init_subclass_with_meta__(cls, registry=None, **options):
-        if not registry:
-            registry = get_registry(SQLAlchemyFilterByInputObjectType)
 
-        super(SQLAlchemyFilterByInputObjectType,
-              cls).__init_subclass_with_meta__(registry=registry, **options)
+@dispatch()
+def set_registry_class(cls: SQLAlchemyFilterByInputObjectType):
+    return SQLAlchemyFilterByInputObjectType
 
 
 @dispatch()
