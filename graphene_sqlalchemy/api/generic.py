@@ -11,6 +11,10 @@ from .namespace import dispatch
 def is_nullable(cls: type, model: DeclarativeMeta, column: OrmLike) -> bool:
     func = None
     model_mro = getmro(model)
+    # if model.__name__ in ['ActivityEntity', 'activity_entity']:
+    #     print('here')
+    #     if column.name in ['entity_type', 'entity_id']:
+    #         print('double here')
     if model_mro:
         model_type = model_mro[0]
         func = is_nullable.dispatch(cls, model_type, type(column))

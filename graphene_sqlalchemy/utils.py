@@ -22,22 +22,23 @@ def get_query(model, context):
     return query
 
 
-def is_mapped_class(cls):
+def check_mapped_class(cls):
     try:
         class_mapper(cls)
     except (ArgumentError, UnmappedClassError):
-        return False
-    else:
-        return True
+        raise UnmappedClassError
 
 
-def is_mapped_instance(cls):
+def check_mapped_instance(cls):
     try:
         object_mapper(cls)
     except (ArgumentError, UnmappedInstanceError):
-        return False
-    else:
-        return True
+        raise UnmappedInstanceError
+
+
+def check_connection(cls):
+    if not issubclass(connection, Connection):
+        raise TypeError
 
 
 def _symbol_name(column_name, is_asc):

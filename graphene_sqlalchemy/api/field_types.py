@@ -1,7 +1,10 @@
 from sqlalchemy import Column, types
 from sqlalchemy.dialects import mysql, postgresql
+from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import CompositeProperty, RelationshipProperty
+# from sqlalchemy_utils.generic import GenericRelationshipProperty
+from ..generic import GenericRelationshipProperty
 try:
     from sqlalchemy_utils import ChoiceType, JSONType, ScalarListType, TSVectorType
 except ImportError:
@@ -10,8 +13,10 @@ except ImportError:
 OrmLike = (
     Column,
     CompositeProperty,
+    DeclarativeMeta,
     hybrid_property,
     RelationshipProperty,
+    GenericRelationshipProperty,
 )
 
 
@@ -49,8 +54,16 @@ Int32Like = (
 )
 
 
+IntLike = (
+    Int8Like,
+    Int16Like,
+    Int24Like,
+    Int32Like,
+)
+
+
 JSONLike = (
-    JSONType,
+    types.JSON,
     postgresql.HSTORE,
     postgresql.JSON,
     postgresql.JSONB

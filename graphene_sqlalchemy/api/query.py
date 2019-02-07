@@ -6,9 +6,9 @@ from .namespace import dispatch
 
 @dispatch()
 def convert_to_query(
+    filters: dict,
     model: DeclarativeMeta,
-    query: Query,
-    filters: dict
+    query: Query
 ) -> Query:
     return query
 

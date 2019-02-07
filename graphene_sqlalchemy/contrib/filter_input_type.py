@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+from inspect import getmro
+from typing import Union
 
 import graphene
 from graphene.types import InputObjectType
@@ -15,13 +16,16 @@ except ImportError:
 from .input_type import SQLAlchemyInputObjectType
 from ..api import (
     dispatch,
-    explicitly_ignored,
+    order_orm_properties,
     FloatLike,
     get_registry,
+    is_key,
+    IntLike,
     Int8Like,
     Int16Like,
     Int24Like,
     Int32Like,
+    OrmLike,
     StringLike,
 )
 from ..scalars import SignedInt32
@@ -29,6 +33,13 @@ from ..scalars import SignedInt32
 
 class FilterInputObjectType(InputObjectType):
     pass
+
+
+class IDFilterInputObjectType(FilterInputObjectType):
+    equalTo = graphene.ID()
+    inList = graphene.List(graphene.String)
+    isNull = graphene.Boolean()
+    notEqualTo = graphene.String()
 
 
 class StringFilterInputObjectType(FilterInputObjectType):
@@ -106,141 +117,158 @@ def set_registry_class(cls: SQLAlchemyFilterInputObjectType):
 
 
 @dispatch()
+def convert_name(cls: SQLAlchemyFilterInputObjectType, model: DeclarativeMeta):
+    return '{}FilterInput'.format(model.__name__)
+
+
+@dispatch()
 def convert_to_query(
+    filters: SQLAlchemyFilterInputObjectType,
     model: DeclarativeMeta,
-    query: Query,
-    filters: SQLAlchemyFilterInputObjectType
+    query: Query
 ) -> Query:
-    for key, comparators in filters.items():
-        orm_prop = getattr(model, key)
-        query = convert_to_query(
-            orm_prop,
-            orm_prop.property,
-            query,
-            comparators)
+    orm_prop_list = order_orm_properties(model)
+    model_mro = getmro(model)[0]
+
+    for orm_prop in orm_prop_list:
+        func = convert_to_query.dispatch(type(filters), model_mro, type(orm_prop), type(query))
+        if not func:
+            func = convert_to_query.dispatch(type(filters), type(model), type(orm_prop), type(query))
+
+        query = func(filters, model, orm_prop, query)
+        # query = convert_to_query(filters, model, orm_prop, query)
     return query
 
 
 @dispatch()
 def convert_to_query(
-    column: InstrumentedAttribute,
-    _type: ColumnProperty,
-    query: Query,
-    filters: FilterInputObjectType
+    filters: SQLAlchemyFilterInputObjectType,
+    model: DeclarativeMeta,
+    column: Column,
+    query: Query
 ) -> Query:
-    for comparator, value in filters.items():
-        op = convert_comparator(comparator)
-        attr = [
-            c % op
-            for c in ['%s', '%s_', '__%s__']
-            if hasattr(column, c % op)
-        ][0]
+    filter_name = convert_name(filters, model, column)
+    if filter_name in filters.keys():
+        for comparator, value in filters[filter_name].items():
+            op = convert_comparator(comparator)
+            attr = [
+                c % op
+                for c in ['%s', '%s_', '__%s__']
+                if hasattr(column, c % op)
+            ][0]
 
-        query = query.filter(getattr(column, attr)(value))
+            query = query.filter(getattr(column, attr)(value))
     return query
 
 
 @dispatch()
 def convert_to_query(
-    relationship: InstrumentedAttribute,
-    _type: RelationshipProperty,
-    query: Query,
-    filters: SQLAlchemyFilterInputObjectType
+    filters: SQLAlchemyFilterInputObjectType,
+    model: DeclarativeMeta,
+    relationship: RelationshipProperty,
+    query: Query
 ) -> Query:
-    query = query.join(relationship)
-    model = relationship.mapper.entity
-    return convert_to_query(model, query, filters)
+    filter_name = convert_name(filters, filters._meta.model, relationship)
+    if filter_name in filters.keys():
+        _filter = filters[filter_name]
+        model = relationship.mapper.entity
+        query = query.join(model)
+
+        if type(_filter) == list:
+            for item in _filter:
+                query = convert_to_query(item, model, query)
+            return query.distinct()
+        return convert_to_query(filters[filter_name], model, query)
+    return query
 
 
-@dispatch()
-def convert_to_query(
-    relationship: InstrumentedAttribute,
-    _type: RelationshipProperty,
-    query: Query,
-    filters: list
-) -> Query:
-    model = relationship.mapper.entity
-    query = query.join(relationship)
-    for item in filters:
-        query = convert_to_query(model, query, item)
-    return query.distinct()
+# @dispatch()
+# def convert_to_query(
+#     filters: list,
+#     model: DeclarativeMeta,
+#     query: Query
+# ) -> Query:
+#     for item in filters:
+#         query = convert_to_query(item, model, query)
+#     return query.distinct()
 
 
 @dispatch()
 def ignore_field(
-    column: Column,
     cls: SQLAlchemyFilterInputObjectType,
-    only_fields: list,
-    exclude_fields: list,
+    model: DeclarativeMeta,
+    column: Column
 ) -> bool:
-    name = column.name
-    explicit = explicitly_ignored(name, only_fields, exclude_fields)
-
-    is_foreign_key = bool(column.foreign_keys)
-
-    return explicit or is_foreign_key
+    # NOTE: We used to ignore foreign keys here, since they're on the
+    #       relationship anyway.
+    #       This is problematic however, for two reasons:
+    #       - Using the relationship requires a join where one may be
+    #         unnecessary.
+    #       - If the table consists only of foreign keys with no known
+    #         relationships, this results in an empty type, which causes
+    #         graphene to throw an error, since an InputObjectType with
+    #         no fields doesn't make any sense.
+    return False
 
 
 @dispatch()
-def is_nullable(column: Column, cls: SQLAlchemyFilterInputObjectType) -> bool:
+def is_nullable(
+    cls: SQLAlchemyFilterInputObjectType,
+    model: DeclarativeMeta,
+    orm_prop: OrmLike
+) -> bool:
     return True
 
 
-# TODO: Support `get_doc` and `is_nullable` interfaces?
-#       No to `is_nullable`, at least. does not make sense to have a
-#       required filter.
 @dispatch()
-def convert_sqlalchemy_type(
-    cls: type,
-    _type: types.TypeEngine,
-    column: Column
-) -> None:
-    func = convert_sqlalchemy_type.dispatch(cls,
-                                            type(_type),
-                                            type(column))
-    return func(cls, _type, column)
-
-
-@dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: SQLAlchemyFilterInputObjectType,
-    type: StringLike,
-    column: Column
-) -> StringFilterInputObjectType:
-    return StringFilterInputObjectType()
+    model: DeclarativeMeta,
+    column: Column,
+    _type: StringLike,
+) -> Union[IDFilterInputObjectType, StringFilterInputObjectType]:
+    if is_key(column):
+        return IDFilterInputObjectType
+    return StringFilterInputObjectType
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: SQLAlchemyFilterInputObjectType,
-    type: types.DateTime,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: types.DateTime
 ) -> DateTimeFilterInputObjectType:
-    return DateTimeFilterInputObjectType()
+    return DateTimeFilterInputObjectType
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: SQLAlchemyFilterInputObjectType,
-    type: (Int8Like, Int16Like, Int24Like, Int32Like),
-    column: Column
-) -> SignedInt32FilterInputObjectType:
-    return SignedInt32FilterInputObjectType()
+    model: DeclarativeMeta,
+    column: Column,
+    _type: IntLike
+) -> Union[IDFilterInputObjectType, SignedInt32FilterInputObjectType]:
+    if is_key(column):
+        return IDFilterInputObjectType
+    return SignedInt32FilterInputObjectType
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: SQLAlchemyFilterInputObjectType,
-    type: types.Boolean,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: types.Boolean
 ) -> BooleanFilterInputObjectType:
-    return BooleanFilterInputObjectType()
+    return BooleanFilterInputObjectType
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: SQLAlchemyFilterInputObjectType,
-    type: FloatLike,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: FloatLike
 ) -> FloatFilterInputObjectType:
-    return FloatFilterInputObjectType()
+    return FloatFilterInputObjectType

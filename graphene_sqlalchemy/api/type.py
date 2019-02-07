@@ -1,14 +1,18 @@
+from enum import Enum as PyEnum
+from functools import partial
 from typing import Union
 
 from graphene import ID, Boolean, Enum, Field, Float, Int, List, String, DateTime, JSONString
 from graphene.types.base import BaseType
+from sqlalchemy.ext.declarative.api import DeclarativeMeta
+from sqlalchemy.orm import CompositeProperty
 
-from .doc import get_doc
 from .field_types import (
     BoolLike,
     ChoiceType,
     Column,
     FloatLike,
+    IntLike,
     Int8Like,
     Int16Like,
     Int24Like,
@@ -19,8 +23,7 @@ from .field_types import (
     StringLike,
     types,
 )
-from .namespace import dispatch
-from .nullable import is_nullable
+from .namespace import dispatch, get_registry
 from ..scalars import (
     SignedInt8,
     SignedInt16,
@@ -33,231 +36,202 @@ from ..scalars import (
 )
 
 
+def is_key(column: Column) -> bool:
+    return column.primary_key or column.foreign_keys
+
+
+def is_unsigned(type: IntLike) -> bool:
+    return getattr(type, 'unsigned', False)
+
+
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: type,
-    _type: types.TypeEngine,
-    column: Column
+    model: DeclarativeMeta,
+    composite: CompositeProperty,
 ) -> None:
-    func = convert_sqlalchemy_type.dispatch(cls,
-                                            type(_type),
-                                            type(column))
+    func = convert_composite_class.dispatch(cls, type(composite))
     return func(cls, _type, column)
 
 
-@dispatch(object, object, object)
-def convert_sqlalchemy_type(cls, _type, column):
-    raise Exception(
-        "Don't know how to convert the SQLAlchemy field %s for class %s with type %s (%s)"
-        % (column, cls, _type, column.__class__)
-    )
+@dispatch()
+def convert_type(
+    cls: type,
+    model: DeclarativeMeta,
+    column: Column,
+    _type: types.TypeEngine,
+) -> None:
+    func = convert_type.dispatch(cls, type(model), type(column), type(_type))
+    return func(cls, model, column, _type)
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: BaseType,
-    type: StringLike,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: StringLike,
 ) -> Union[ID, String]:
-    if column.primary_key or column.foreign_keys:
-        return ID(
-            description=get_doc(column),
-            required=not (is_nullable(column, cls)),
-        )
-    else:
-        return String(
-            description=get_doc(column),
-            required=not (is_nullable(column, cls))
-        )
+    if is_key(column):
+        return ID
+    return String
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: BaseType,
-    type: types.DateTime,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: types.DateTime,
 ) -> DateTime:
-    return DateTime(
-        description=get_doc(column), required=not (is_nullable(column, cls))
-    )
+    return DateTime
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: BaseType,
-    type: Int8Like,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: Int8Like,
 ) -> Union[ID, SignedInt8, UnsignedInt8]:
-    if column.primary_key or column.foreign_keys:
-        return ID(
-            description=get_doc(column),
-            required=not (is_nullable(column, cls)),
-        )
-    elif getattr(type, 'unsigned', False):
-        return UnsignedInt8(
-            description=get_doc(column),
-            required=not (is_nullable(column, cls)),
-        )
+    if is_key(column):
+        return ID
+    elif is_unsigned(_type):
+        return UnsignedInt8
     else:
-        return SignedInt8(
-            description=get_doc(column),
-            required=not (is_nullable(column, cls)),
-        )
+        return SignedInt8
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: BaseType,
-    type: Int16Like,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: Int16Like,
 ) -> Union[ID, SignedInt16, UnsignedInt16]:
-    if column.primary_key or column.foreign_keys:
-        return ID(
-            description=get_doc(column),
-            required=not (is_nullable(column, cls)),
-        )
-    elif getattr(type, 'unsigned', False):
-        return UnsignedInt16(
-            description=get_doc(column),
-            required=not (is_nullable(column, cls)),
-        )
+    if is_key(column):
+        return ID
+    elif is_unsigned(_type):
+        return UnsignedInt16
     else:
-        return SignedInt16(
-            description=get_doc(column),
-            required=not (is_nullable(column, cls)),
-        )
+        return SignedInt16
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: BaseType,
-    type: Int24Like,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: Int24Like,
 ) -> Union[ID, SignedInt24, UnsignedInt24]:
-    if column.primary_key or column.foreign_keys:
-        return ID(
-            description=get_doc(column),
-            required=not (is_nullable(column, cls)),
-        )
-    elif getattr(type, 'unsigned', False):
-        return UnsignedInt24(
-            description=get_doc(column),
-            required=not (is_nullable(column, cls)),
-        )
+    if is_key(column):
+        return ID
+    elif is_unsigned(_type):
+        return UnsignedInt24
     else:
-        return SignedInt24(
-            description=get_doc(column),
-            required=not (is_nullable(column, cls)),
-        )
+        return SignedInt24
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: BaseType,
-    type: Int32Like,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: Int32Like,
 ) -> Union[ID, SignedInt32, UnsignedInt32]:
-    if column.primary_key or column.foreign_keys:
-        return ID(
-            description=get_doc(column),
-            required=not (is_nullable(column, cls)),
-        )
-    elif getattr(type, 'unsigned', False):
-        return UnsignedInt32(
-            description=get_doc(column),
-            required=not (is_nullable(column, cls)),
-        )
+    if is_key(column):
+        return ID
+    elif is_unsigned(_type):
+        return UnsignedInt32
     else:
-        return SignedInt32(
-            description=get_doc(column),
-            required=not (is_nullable(column, cls)),
-        )
+        return SignedInt32
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: BaseType,
-    type: BoolLike,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: BoolLike,
 ) -> Boolean:
-    return Boolean(
-        description=get_doc(column), required=not (is_nullable(column, cls))
-    )
+    return Boolean
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: BaseType,
-    type: FloatLike,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: FloatLike,
 ) -> Float:
-    return Float(
-        description=get_doc(column),
-        required=not (is_nullable(column, cls))
-    )
+    return Float
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_enum():
+    raise NotImplementedError()
+
+
+@dispatch()
+def convert_type(
     cls: BaseType,
-    type: types.Enum,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: types.Enum,
 ) -> Field:
-    enum_class = getattr(type, 'enum_class', None)
-    if enum_class:  # Check if an enum.Enum type is used
+    prefix = _type.name if _type.name else column.name
+    name = "{}_enum".format(prefix)
+    enum_class = getattr(_type, 'enum_class')
+    if not enum_class:
+        enum_class = PyEnum(name, _type.enums)
+
+    try:
+        func = convert_enum.dispatch(type(enum_class))
+        graphene_type = func(enum_class)
+    except:
         graphene_type = Enum.from_enum(enum_class)
-    else:  # Nope, just a list of string options
-        items = zip(type.enums, type.enums)
-        # TODO: Check if this is an ok change in logic
-        # name = type.name if type.name else column.name
-        graphene_type = Enum(type.name, items)
-    return Field(
-        graphene_type,
-        description=get_doc(column),
-        required=not (is_nullable(column, cls)),
-    )
+        convert_enum.add((type(enum_class),), lambda e: graphene_type)
+
+    return partial(Field, graphene_type)
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: BaseType,
-    type: ChoiceType,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: ChoiceType,
 ) -> Enum:
     name = "{}_{}".format(column.table.name, column.name).upper()
-    return Enum(name, type.choices, description=get_doc(column))
+    return partial(Enum, name, _type.choices)
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: BaseType,
-    type: ScalarListType,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: ScalarListType,
 ) -> List:
-    return List(String, description=get_doc(column))
+    return partial(List, String)
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: BaseType,
-    type: postgresql.ARRAY,
-    column: Column
+    model: DeclarativeMeta,
+    column: Column,
+    _type: postgresql.ARRAY,
 ) -> List:
-    graphene_type = convert_sqlalchemy_type(column.type.item_type, column)
-    inner_type = type(graphene_type)
-    return List(
-        inner_type,
-        description=get_doc(column),
-        required=not (is_nullable(column, cls)),
-    )
+    inner_type = convert_type(cls, _type.item_type, column)
+    return partial(List, inner_type)
 
 
 @dispatch()
-def convert_sqlalchemy_type(
+def convert_type(
     cls: BaseType,
-    type: JSONLike,
-    column: Column
-) -> JSONString:
-    return JSONString(
-        description=get_doc(column), required=not (is_nullable(column, cls))
-    )
+    model: DeclarativeMeta,
+    column: Column,
+    _type: JSONLike,
+) -> JSONLike:
+    return JSONString

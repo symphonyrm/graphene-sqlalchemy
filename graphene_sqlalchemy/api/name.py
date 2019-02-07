@@ -1,30 +1,48 @@
+from inspect import getmro
+
 from graphene.types.base import BaseType
 from sqlalchemy import Column
+from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import CompositeProperty, RelationshipProperty
+# from sqlalchemy_utils.generic import GenericRelationshipProperty
+from ..generic import GenericRelationshipProperty
 
 from .field_types import OrmLike
 from .namespace import dispatch
 
 
-# TODO: Do we need `model` on these? At worst case, should be able to get
-#       the model from the column/relationship/etc.
-# NOTE: Looks like the model isn't accessible from the `Column`?
 @dispatch()
 def convert_name(
-    orm_prop: OrmLike,
     cls: type,
-    model: object,
+    model: DeclarativeMeta,
+    orm_prop: OrmLike
 ) -> str:
-    func = convert_name.dispatch(type(orm_prop), cls, type(model))
-    return func(orm_prop, cls, model)
+    func = None
+    model_mro = getmro(model)
+    if model_mro:
+        model_type = model_mro[0]
+        func = convert_name.dispatch(cls, model_type, type(orm_prop))
+    if not func:
+        func = convert_name.dispatch(cls, type(model), type(orm_prop))
+    # func = convert_name.dispatch(cls, type(model), type(orm_prop))
+    return func(cls, model, orm_prop)
 
 
 @dispatch()
 def convert_name(
-    orm_prop: OrmLike,
+    cls: type,
+    model: DeclarativeMeta,
+) -> str:
+    func = convert_name.dispatch(cls, type(model))
+    return func(cls, model)
+
+
+@dispatch()
+def convert_name(
     cls: BaseType,
-    model: object
+    model: DeclarativeMeta,
+    orm_prop: OrmLike,
 ) -> str:
     return get_name(orm_prop)
 
@@ -47,4 +65,9 @@ def get_name(hybrid: hybrid_property) -> str:
 
 @dispatch()
 def get_name(relationship: RelationshipProperty) -> str:
+    return relationship.key
+
+
+@dispatch()
+def get_name(relationship: GenericRelationshipProperty) -> str:
     return relationship.key

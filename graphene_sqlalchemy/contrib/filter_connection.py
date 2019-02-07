@@ -2,9 +2,11 @@ import graphene
 import sqlalchemy
 
 from graphene.utils.str_converters import to_snake_case
+from sqlalchemy.ext.declarative.api import DeclarativeMeta
 
 from .filter_by_input_type import SQLAlchemyFilterByInputObjectType
 from .filter_input_type import convert_to_query, SQLAlchemyFilterInputObjectType
+from ..api import dispatch, generate_type
 from ..fields import SQLAlchemyConnectionField
 
 
@@ -17,39 +19,9 @@ ORDER_FUNCTIONS = {
 class InstrumentedQuery(SQLAlchemyConnectionField):
     def __init__(self, _type, *args, **kwargs):
         model = _type._meta.model
+        kwargs.setdefault('args', construct_fields(self, model))
 
-        exclude = kwargs.get('exclude_fields', [])
-        only = kwargs.get('only_fields', [])
-        filter_by_class = kwargs.get('filter_by_class', SQLAlchemyFilterByInputObjectType)
-        filter_class = kwargs.get('filter_class', SQLAlchemyFilterInputObjectType)
-
-        kwargs = {k: v for k, v in kwargs if k not in exclude}
-        args = kwargs.pop('args', dict())
-        meta = {
-            'Meta': {
-                'model': model,
-                'exclude_fields': exclude,
-                'only_fields': only
-            }
-        }
-
-        filter_by_type = type(
-            '{}FilterByInput'.format(model.__name__),
-            (filter_by_class,),
-            meta
-        )
-        args.setdefault('filter_by', graphene.Argument(filter_by_type))
-
-        filter_type = type(
-            '{}FilterInput'.format(model.__name__),
-            (filter_class,),
-            meta
-        )
-        args.setdefault('filter', graphene.Argument(filter_type))
-
-        args['order_by'] = graphene.List(graphene.String, required=False)
-
-        super(InstrumentedQuery, self).__init__(_type, args=args, **kwargs)
+        super(InstrumentedQuery, self).__init__(_type, *args, **kwargs)
 
 
     @classmethod
@@ -58,9 +30,9 @@ class InstrumentedQuery(SQLAlchemyConnectionField):
 
         query = query.filter_by(**kwargs.get('filter_by', {}))
         query = convert_to_query(
+            kwargs.get('filter', {}),
             model,
-            query,
-            kwargs.get('filter', {}))
+            query)
 
         orderings = [
             convert_order_by_params(model, *order.split(' '))
@@ -73,3 +45,12 @@ class InstrumentedQuery(SQLAlchemyConnectionField):
 
 def convert_order_by_params(model, name, direction='asc'):
     return ORDER_FUNCTIONS[direction.lower()](getattr(model, to_snake_case(name)))
+
+
+@dispatch()
+def construct_fields(cls: InstrumentedQuery, model: DeclarativeMeta):
+    return {
+        'filter_by': graphene.Argument(generate_type(SQLAlchemyFilterByInputObjectType, model)),
+        'filter': graphene.Argument(generate_type(SQLAlchemyFilterInputObjectType, model)),
+        'order_by': graphene.List(graphene.String)
+    }
