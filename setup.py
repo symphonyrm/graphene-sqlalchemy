@@ -42,6 +42,7 @@ setup(
         "SQLAlchemy",
         "singledispatch>=3.4.0.3",
         "multipledispatch==0.6.0",
+        "inflection>=0.3.1",
     ],
     tests_require=[
         "pytest>=2.7.2",
