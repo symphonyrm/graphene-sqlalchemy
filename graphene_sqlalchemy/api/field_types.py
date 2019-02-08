@@ -3,8 +3,8 @@ from sqlalchemy.dialects import mysql, postgresql
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import CompositeProperty, RelationshipProperty
-# from sqlalchemy_utils.generic import GenericRelationshipProperty
-from ..generic import GenericRelationshipProperty
+from sqlalchemy_utils.generic import GenericRelationshipProperty
+
 try:
     from sqlalchemy_utils import ChoiceType, JSONType, ScalarListType, TSVectorType
 except ImportError:

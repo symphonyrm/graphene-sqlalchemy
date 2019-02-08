@@ -1,7 +1,6 @@
 from . import api, contrib
 from .types import SQLAlchemyObjectType
 from .fields import SQLAlchemyConnectionField
-from .generic import GenericRelationshipProperty, generic_relationship
 from .scalars import (
     SignedInt8,
     SignedInt16,

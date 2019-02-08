@@ -3,8 +3,7 @@ from graphene.types.base import BaseType
 from sqlalchemy import Column
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy.orm import RelationshipProperty
-# from sqlalchemy_utils.generic import GenericRelationshipProperty
-from ..generic import GenericRelationshipProperty
+from sqlalchemy_utils.generic import GenericRelationshipProperty
 
 from .field_types import OrmLike
 from .name import get_name, convert_name

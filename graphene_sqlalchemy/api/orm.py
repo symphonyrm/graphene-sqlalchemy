@@ -10,8 +10,7 @@ from sqlalchemy import Column, inspect
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import CompositeProperty, interfaces, RelationshipProperty
-# from sqlalchemy_utils.generic import GenericRelationshipProperty
-from ..generic import GenericRelationshipProperty
+from sqlalchemy_utils.generic import GenericRelationshipProperty
 
 from .doc import get_doc
 from .field_types import OrmLike
