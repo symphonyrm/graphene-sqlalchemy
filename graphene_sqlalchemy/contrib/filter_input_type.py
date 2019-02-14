@@ -1,3 +1,4 @@
+from functools import partial
 from inspect import getmro
 from typing import Union
 
@@ -8,6 +9,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy.orm import ColumnProperty, Mapper, Query, RelationshipProperty
 from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy_utils.generic import GenericRelationshipProperty
 try:
     from sqlalchemy_utils import ChoiceType, JSONType, ScalarListType, TSVectorType
 except ImportError:
@@ -16,6 +18,7 @@ except ImportError:
 from .input_type import SQLAlchemyInputObjectType
 from ..api import (
     dispatch,
+    dynamic_type,
     order_orm_properties,
     FloatLike,
     get_registry,
@@ -136,7 +139,6 @@ def convert_to_query(
             func = convert_to_query.dispatch(type(filters), type(model), type(orm_prop), type(query))
 
         query = func(filters, model, orm_prop, query)
-        # query = convert_to_query(filters, model, orm_prop, query)
     return query
 
 
@@ -182,15 +184,40 @@ def convert_to_query(
     return query
 
 
-# @dispatch()
-# def convert_to_query(
-#     filters: list,
-#     model: DeclarativeMeta,
-#     query: Query
-# ) -> Query:
-#     for item in filters:
-#         query = convert_to_query(item, model, query)
-#     return query.distinct()
+@dispatch()
+def convert_to_query(
+    inputs: SQLAlchemyFilterInputObjectType,
+    model: DeclarativeMeta,
+    relationship: GenericRelationshipProperty,
+    query: Query
+) -> Query:
+    if hasattr(relationship, '_map_discriminator2type'):
+        attr_pairs = relationship.discriminator_model_pairs()
+        for key, foreign_model in attr_pairs:
+            if key in inputs:
+                entity_input = inputs[key]
+                entity_model = entity_input._meta.model
+                entity_attr = getattr(model, relationship.key)
+                entity_id = getattr(model, relationship.id[0].key)
+
+                query = query.join(entity_model, entity_id == entity_model.id)
+                query = convert_to_query(entity_input, entity_model, query)
+                break
+
+    return query
+
+
+@dispatch()
+def construct_fields(
+    cls: SQLAlchemyFilterInputObjectType,
+    model: DeclarativeMeta,
+    relationship: GenericRelationshipProperty,
+):
+    if hasattr(relationship, '_map_discriminator2type'):
+        attr_pairs = relationship.discriminator_model_pairs()
+        for key, foreign_model in attr_pairs:
+            generic = partial(dynamic_type, cls, model, relationship, foreign_model)
+            setattr(cls, key, graphene.Dynamic(generic))
 
 
 @dispatch()
@@ -227,7 +254,7 @@ def convert_type(
     column: Column,
     _type: StringLike,
 ) -> Union[IDFilterInputObjectType, StringFilterInputObjectType]:
-    if is_key(column):
+    if is_key(model, column):
         return IDFilterInputObjectType
     return StringFilterInputObjectType
 
@@ -249,7 +276,7 @@ def convert_type(
     column: Column,
     _type: IntLike
 ) -> Union[IDFilterInputObjectType, SignedInt32FilterInputObjectType]:
-    if is_key(column):
+    if is_key(model, column):
         return IDFilterInputObjectType
     return SignedInt32FilterInputObjectType
 

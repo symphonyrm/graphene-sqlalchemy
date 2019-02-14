@@ -6,6 +6,7 @@ from sqlalchemy.orm import RelationshipProperty
 
 from .input_type import SQLAlchemyInputObjectType
 from ..api import dispatch, get_registry
+from ..utils import is_generic_discriminator, is_generic_key
 
 
 class SQLAlchemyCreateInputObjectType(SQLAlchemyInputObjectType):
@@ -71,5 +72,9 @@ def is_nullable(
     column: Column
 ) -> bool:
     if column.foreign_keys:
+        return True
+    if is_generic_discriminator(model, column):
+        return True
+    if is_generic_key(model, column):
         return True
     return bool(getattr(column, "nullable", True))

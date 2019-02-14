@@ -1,11 +1,14 @@
-from graphene import relay
+from functools import partial
+
+from graphene import Dynamic, relay
 from sqlalchemy import Column
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
+from sqlalchemy_utils.generic import GenericRelationshipProperty
 
 from .countable_connection import CountableConnection
 from .dbid_interface import DatabaseId
 from .filter_connection import InstrumentedQuery
-from ..api import dispatch
+from ..api import dispatch, dynamic_type
 from ..types import SQLAlchemyObjectType
 
 
@@ -61,3 +64,16 @@ def convert_name( # pylint: disable=function-redefined
     if is_primary_key and name == 'id':
         return 'db_id'
     return name
+
+
+@dispatch()
+def construct_fields(
+    cls: SQLAlchemyFilterObjectType,
+    model: DeclarativeMeta,
+    relationship: GenericRelationshipProperty,
+):
+    if hasattr(relationship, '_map_discriminator2type'):
+        attr_pairs = relationship.discriminator_model_pairs()
+        models = [pair[1] for pair in attr_pairs]
+        generic = partial(dynamic_type, cls, model, relationship, models)
+        setattr(cls, relationship.key, Dynamic(generic))

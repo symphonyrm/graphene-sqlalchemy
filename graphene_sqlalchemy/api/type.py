@@ -4,8 +4,10 @@ from typing import Union
 
 from graphene import ID, Boolean, Enum, Field, Float, Int, List, String, DateTime, JSONString
 from graphene.types.base import BaseType
+from sqlalchemy import inspect
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy.orm import CompositeProperty
+from sqlalchemy_utils.generic import GenericRelationshipProperty
 
 from .field_types import (
     BoolLike,
@@ -34,10 +36,11 @@ from ..scalars import (
     UnsignedInt24,
     UnsignedInt32,
 )
+from ..utils import is_generic_key
 
 
-def is_key(column: Column) -> bool:
-    return column.primary_key or column.foreign_keys
+def is_key(model: DeclarativeMeta, column: Column) -> bool:
+    return column.primary_key or column.foreign_keys or is_generic_key(model, column)
 
 
 def is_unsigned(type: IntLike) -> bool:
@@ -72,7 +75,7 @@ def convert_type(
     column: Column,
     _type: StringLike,
 ) -> Union[ID, String]:
-    if is_key(column):
+    if is_key(model, column):
         return ID
     return String
 
@@ -94,7 +97,7 @@ def convert_type(
     column: Column,
     _type: Int8Like,
 ) -> Union[ID, SignedInt8, UnsignedInt8]:
-    if is_key(column):
+    if is_key(model, column):
         return ID
     elif is_unsigned(_type):
         return UnsignedInt8
@@ -109,7 +112,7 @@ def convert_type(
     column: Column,
     _type: Int16Like,
 ) -> Union[ID, SignedInt16, UnsignedInt16]:
-    if is_key(column):
+    if is_key(model, column):
         return ID
     elif is_unsigned(_type):
         return UnsignedInt16
@@ -124,7 +127,7 @@ def convert_type(
     column: Column,
     _type: Int24Like,
 ) -> Union[ID, SignedInt24, UnsignedInt24]:
-    if is_key(column):
+    if is_key(model, column):
         return ID
     elif is_unsigned(_type):
         return UnsignedInt24
@@ -139,7 +142,7 @@ def convert_type(
     column: Column,
     _type: Int32Like,
 ) -> Union[ID, SignedInt32, UnsignedInt32]:
-    if is_key(column):
+    if is_key(model, column):
         return ID
     elif is_unsigned(_type):
         return UnsignedInt32

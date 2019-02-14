@@ -1,6 +1,7 @@
 from sqlalchemy import Column
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy.orm import RelationshipProperty
+from sqlalchemy_utils.generic import GenericRelationshipProperty
 
 from .input_type import SQLAlchemyInputObjectType
 from ..api import dispatch, get_registry, OrmLike
@@ -26,6 +27,15 @@ def ignore_field(
     cls: SQLAlchemyFilterByInputObjectType,
     model: DeclarativeMeta,
     column: RelationshipProperty
+) -> bool:
+    return True
+
+
+@dispatch()
+def ignore_field(
+    cls: SQLAlchemyFilterByInputObjectType,
+    model: DeclarativeMeta,
+    column: GenericRelationshipProperty
 ) -> bool:
     return True
 

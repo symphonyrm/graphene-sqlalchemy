@@ -14,13 +14,18 @@ from .orm import order_orm_properties
 PrimitiveLike = (bool, datetime, float, int, str, type(None))
 
 
+# TODO: See if we can clean this up substantially
+#
+#       Change the model/instance types from object. See if we can unify
+#       the model/instance more easily.
+#
+#       Flesh out return types?
 @dispatch()
 def convert_to_instance(
-    inputs: BaseType, # TODO: Change this to an `InputObjectType`?
+    inputs: BaseType,
     model: DeclarativeMeta
-): # TODO: Add return type
+):
     orm_prop_list = order_orm_properties(model)
-
     instance = model()
 
     for orm_prop in orm_prop_list:
@@ -31,9 +36,9 @@ def convert_to_instance(
 @dispatch()
 def convert_to_instance(
     inputs: BaseType,
-    instance: object, # TODO: Switch these back to `DeclarativeMeta`?
+    instance: object,
     column: Column
-) -> PrimitiveLike:
+):
     input_name = convert_name(inputs, inputs._meta.model, column)
     if input_name in inputs.keys():
         setattr(instance, column.name, inputs[input_name])
@@ -46,7 +51,7 @@ def convert_to_instance(
     inputs: BaseType,
     instance: object,
     relationship: RelationshipProperty
-):# -> Base:
+):
     input_name = convert_name(inputs, inputs._meta.model, relationship)
     if input_name in inputs.keys():
         setattr(
@@ -62,7 +67,7 @@ def convert_to_instance(
 def convert_to_instance(
     inputs: list,
     model: DeclarativeMeta
-):# -> Base:
+):
     return [
         convert_to_instance(item, model)
         for item in inputs
@@ -74,7 +79,7 @@ def convert_to_instance(
     inputs: list,
     instance: object,
     relationship: RelationshipProperty
-):# -> Base:
+):
     input_name = convert_name(inputs, inputs._meta.model, relationship)
     if input_name in inputs.keys():
         value = [
@@ -92,5 +97,5 @@ def convert_to_instance(
     inputs: BaseType,
     instance: object,
     relationship: GenericRelationshipProperty
-):# -> Base:
+):
     return instance

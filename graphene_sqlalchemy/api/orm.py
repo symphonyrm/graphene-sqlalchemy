@@ -186,9 +186,8 @@ def construct_fields(
     cls: BaseType,
     model: DeclarativeMeta,
     relationship: GenericRelationshipProperty,
-) -> Dict[str, Dynamic]:
+):
     pass
-    # return {}
 
 
 def dynamic_type(cls, model, relationship, foreign_models):

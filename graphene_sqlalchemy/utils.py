@@ -3,6 +3,7 @@ from sqlalchemy.exc import ArgumentError
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import class_mapper, object_mapper
 from sqlalchemy.orm.exc import UnmappedClassError, UnmappedInstanceError
+from sqlalchemy_utils.generic import GenericRelationshipProperty
 
 
 def get_session(context):
@@ -108,3 +109,23 @@ def sort_argument_for_model(cls, has_default=True):
     if not has_default:
         default = None
     return Argument(List(enum), default_value=default)
+
+
+def is_generic_discriminator(model, column):
+    return any([
+        rel
+        for rel in inspect(model).all_orm_descriptors
+        if hasattr(rel, 'property')
+        and type(rel.property) == GenericRelationshipProperty
+        and column == rel.property._discriminator_col
+    ])
+
+
+def is_generic_key(model, column):
+    return any([
+        rel
+        for rel in inspect(model).all_orm_descriptors
+        if hasattr(rel, 'property')
+        and type(rel.property) == GenericRelationshipProperty
+        and column in rel.property._id_cols
+    ])
