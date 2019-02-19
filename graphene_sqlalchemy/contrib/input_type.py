@@ -56,8 +56,11 @@ def construct_fields(
 ):
     if hasattr(relationship, '_map_discriminator2type'):
         attr_pairs = relationship.discriminator_model_pairs()
-        for key, foreign_model in attr_pairs:
-            create_key = 'createAndAttachTo{}'.format(camelize(underscore(key)))
+        for discriminator, foreign_model in attr_pairs:
+            create_key = 'createAndAttach{}To{}'.format(
+                foreign_model.__name__,
+                camelize(relationship.key)
+            )
             generic = partial(dynamic_type, cls, model, relationship, foreign_model)
             setattr(cls, create_key, graphene.Dynamic(generic))
 
@@ -71,7 +74,10 @@ def convert_to_instance(
     if hasattr(relationship, '_map_discriminator2type'):
         attr_pairs = relationship.discriminator_model_pairs()
         for key, foreign_model in attr_pairs:
-            create_key = 'createAndAttachTo{}'.format(camelize(key))
+            create_key = 'createAndAttach{}To{}'.format(
+                foreign_model.__name__,
+                camelize(relationship.key)
+            )
             if create_key in inputs:
                 entity_input = inputs[create_key]
                 setattr(
