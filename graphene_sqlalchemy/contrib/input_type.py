@@ -2,7 +2,7 @@ from functools import partial
 
 import graphene
 from graphene.types.utils import yank_fields_from_attrs
-from inflection import camelize
+from inflection import camelize, underscore
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy_utils.generic import GenericRelationshipProperty
 
@@ -57,7 +57,7 @@ def construct_fields(
     if hasattr(relationship, '_map_discriminator2type'):
         attr_pairs = relationship.discriminator_model_pairs()
         for key, foreign_model in attr_pairs:
-            create_key = 'createAndAttachTo{}'.format(camelize(key))
+            create_key = 'createAndAttachTo{}'.format(camelize(underscore(key)))
             generic = partial(dynamic_type, cls, model, relationship, foreign_model)
             setattr(cls, create_key, graphene.Dynamic(generic))
 

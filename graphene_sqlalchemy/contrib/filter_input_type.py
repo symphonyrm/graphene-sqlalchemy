@@ -4,6 +4,7 @@ from typing import Union
 
 import graphene
 from graphene.types import InputObjectType
+from inflection import camelize, underscore
 from sqlalchemy import Column, types
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
@@ -215,7 +216,8 @@ def construct_fields(
 ):
     if hasattr(relationship, '_map_discriminator2type'):
         attr_pairs = relationship.discriminator_model_pairs()
-        for key, foreign_model in attr_pairs:
+        for discriminator, foreign_model in attr_pairs:
+            key = camelize(underscore(discriminator))
             generic = partial(dynamic_type, cls, model, relationship, foreign_model)
             setattr(cls, key, graphene.Dynamic(generic))
 
