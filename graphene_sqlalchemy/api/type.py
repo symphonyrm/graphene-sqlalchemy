@@ -7,7 +7,6 @@ from graphene.types.base import BaseType
 from sqlalchemy import inspect
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy.orm import CompositeProperty
-from sqlalchemy_utils.generic import GenericRelationshipProperty
 
 from .field_types import (
     BoolLike,
