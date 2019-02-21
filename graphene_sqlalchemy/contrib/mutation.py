@@ -1,11 +1,13 @@
 from graphql import GraphQLError
 from graphene.types import Argument, Field, Mutation, ID
 from graphene.types.mutation import MutationOptions
+from sqlalchemy import inspect
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 
 from ..api import convert_to_instance, dispatch, generate_type
 from .create_input_type import SQLAlchemyCreateInputObjectType
+from .delete_input_type import SQLAlchemyDeleteInputObjectType
 from .edit_input_type import SQLAlchemyEditInputObjectType
 from .filter_object_type import SQLAlchemyFilterObjectType
 from ..utils import get_session
@@ -101,14 +103,27 @@ class SQLAlchemyEditMutation(SQLAlchemyMutation):
 
     @classmethod
     def mutate_session(cls, session, model, **kwargs):
-        old_instance = session.merge(model(id=kwargs['id']))
+        keys = inspect(model).primary_key
+        key_input = {}
+        for key in keys:
+            name = key.name
+            if name in kwargs['input']:
+                key_input[key.name] = kwargs['input'].pop(name)
+
+        old_instance = session.query(model).get(key_input.values())
+        if not old_instance:
+            raise GraphQLError(
+                'No such instance of type {} with keys {}'.format(
+                    model.__name__,
+                    key_input))
+
         new_instance = convert_to_instance(kwargs['input'], model)
 
         for key, value in new_instance.__dict__.items():
             if not key.startswith('_'):
                 setattr(old_instance, key, value)
 
-        return session.merge(old_instance)
+        return old_instance
 
 
 @dispatch()
@@ -120,7 +135,6 @@ def convert_name(cls: SQLAlchemyEditMutation, model: DeclarativeMeta):
 def construct_fields(cls: SQLAlchemyEditMutation, model: DeclarativeMeta):
     return {
         'arguments': {
-            'id': ID(required=True),
             'input': Argument(
                 generate_type(SQLAlchemyEditInputObjectType, model),
                 required=True,
@@ -137,12 +151,21 @@ class SQLAlchemyDeleteMutation(SQLAlchemyMutation):
 
     @classmethod
     def mutate_session(cls, session, model, **kwargs):
-        instance = session.query(model).get(kwargs['id'])
+        keys = inspect(model).primary_key
+        key_input = {}
+        for key in keys:
+            name = key.name
+            if name in kwargs['input']:
+                key_input[key.name] = kwargs['input'].pop(name)
+
+        instance = session.query(model).get(key_input.values())
         if instance:
             session.delete(instance)
         else:
             raise GraphQLError(
-                'No such instance of type %s with id %s' % (model.__name__, kwargs['id']))
+                'No such instance of type {} with keys {}'.format(
+                    model.__name__,
+                    key_input))
 
         return instance
 
@@ -156,7 +179,10 @@ def convert_name(cls: SQLAlchemyDeleteMutation, model: DeclarativeMeta):
 def construct_fields(cls: SQLAlchemyDeleteMutation, model: DeclarativeMeta):
     return {
         'arguments': {
-            'id': ID(required=True)
+            'input': Argument(
+                generate_type(SQLAlchemyDeleteInputObjectType, model),
+                required=True,
+            )
         },
         'output': generate_type(SQLAlchemyFilterObjectType, model)
     }
