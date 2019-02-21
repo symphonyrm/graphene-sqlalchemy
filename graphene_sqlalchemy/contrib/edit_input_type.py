@@ -1,9 +1,11 @@
 import inflection
 
+from graphene import Dynamic, Field, List
 from sqlalchemy import Column, inspect
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
-from sqlalchemy.orm import RelationshipProperty
+from sqlalchemy.orm import interfaces, RelationshipProperty
 
+from .create_input_type import SQLAlchemyCreateInputObjectType
 from .input_type import SQLAlchemyInputObjectType
 from ..api import dispatch, get_registry
 
@@ -26,9 +28,8 @@ def ignore_field(
 ) -> bool:
     auto_fields = ['created_at', 'updated_at']
     is_auto = bool(column.server_default) and inflection.underscore(column.name) in auto_fields
-    is_primary_key = bool(column.primary_key) and column.autoincrement and not column.foreign_keys
 
-    return is_auto or is_primary_key
+    return is_auto
 
 
 @dispatch()
@@ -42,7 +43,7 @@ def convert_name(
     model: DeclarativeMeta,
     column: Column
 ) -> str:
-    if column.foreign_keys:
+    if column.foreign_keys and not column.primary_key:
         name = column.name.rsplit('_id', 1)[0]
         relationships = [
             rel
@@ -70,4 +71,33 @@ def is_nullable(
     model: DeclarativeMeta,
     column: Column
 ) -> bool:
-    return True
+    is_primary_key = bool(column.primary_key) and column.autoincrement
+
+    return not is_primary_key
+
+
+@dispatch()
+def construct_fields(
+    cls: SQLAlchemyEditInputObjectType,
+    model: DeclarativeMeta,
+    relationship: RelationshipProperty,
+):
+    name = convert_name(cls, model, relationship)
+    direction = relationship.direction
+    model = relationship.mapper.entity
+
+    def dynamic_type():
+        # TODO: Think about changing the registry interface
+        #       This feels clunky
+        registry = get_registry(SQLAlchemyCreateInputObjectType)
+        _type = registry.get_type_for_model(model)
+        if not _type:
+            return None
+        if direction == interfaces.MANYTOONE or not relationship.uselist:
+            return Field(_type)
+        elif direction in (interfaces.ONETOMANY, interfaces.MANYTOMANY):
+            if _type._meta.connection:
+                return createConnectionField(_type._meta.connection)
+            return Field(List(_type))
+
+    setattr(cls, name, Dynamic(dynamic_type))
