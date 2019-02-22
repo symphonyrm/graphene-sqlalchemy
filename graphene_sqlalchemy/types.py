@@ -1,5 +1,4 @@
-from typing import Callable
-
+from sqlalchemy import inspect
 from sqlalchemy.orm.exc import NoResultFound
 
 from graphene import Field, ID
@@ -81,12 +80,12 @@ class SQLAlchemyObjectType(ObjectType):
 
     @classmethod
     def get_instance(cls, model, info, input):
-        keys = inspect(model).primary_key
+        keys = inspect(input._meta.model).primary_key
         key_input = {}
         for key in keys:
             name = key.name
-            if name in kwargs['input']:
-                key_input[key.name] = kwargs['input'].pop(name)
+            if name in input:
+                key_input[key.name] = input.pop(name)
 
         try:
             return cls.get_query(info).get(key_input.values())
