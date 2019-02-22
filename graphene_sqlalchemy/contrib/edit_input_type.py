@@ -33,6 +33,19 @@ def ignore_field(
 
 
 @dispatch()
+def ignore_field(
+    cls: SQLAlchemyEditInputObjectType,
+    model: DeclarativeMeta,
+    relationship: RelationshipProperty
+) -> bool:
+    has_primary_key = any(
+        [column.primary_key for column in relationship.local_columns]
+    )
+
+    return has_primary_key
+
+
+@dispatch()
 def convert_name(cls: SQLAlchemyEditInputObjectType, model: DeclarativeMeta):
     return '{}EditInput'.format(model.__name__)
 
