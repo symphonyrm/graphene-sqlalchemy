@@ -14,19 +14,19 @@ NotColumnLike = tuple([
 ])
 
 
-class SQLAlchemyDeleteInputObjectType(SQLAlchemyInputObjectType):
+class SQLAlchemyKeysInputObjectType(SQLAlchemyInputObjectType):
     class Meta:
         abstract = True
 
 
 @dispatch()
-def set_registry_class(cls: SQLAlchemyDeleteInputObjectType):
-    return SQLAlchemyDeleteInputObjectType
+def set_registry_class(cls: SQLAlchemyKeysInputObjectType):
+    return SQLAlchemyKeysInputObjectType
 
 
 @dispatch()
 def ignore_field(
-    cls: SQLAlchemyDeleteInputObjectType,
+    cls: SQLAlchemyKeysInputObjectType,
     model: DeclarativeMeta,
     column: Column
 ) -> bool:
@@ -37,7 +37,7 @@ def ignore_field(
 
 @dispatch()
 def ignore_field(
-    cls: SQLAlchemyDeleteInputObjectType,
+    cls: SQLAlchemyKeysInputObjectType,
     model: DeclarativeMeta,
     column: NotColumnLike
 ) -> bool:
@@ -45,5 +45,5 @@ def ignore_field(
 
 
 @dispatch()
-def convert_name(cls: SQLAlchemyDeleteInputObjectType, model: DeclarativeMeta):
-    return '{}DeleteInput'.format(model.__name__)
+def convert_name(cls: SQLAlchemyKeysInputObjectType, model: DeclarativeMeta):
+    return '{}KeysInput'.format(model.__name__)

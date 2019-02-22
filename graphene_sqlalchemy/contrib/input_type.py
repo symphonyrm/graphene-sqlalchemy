@@ -6,7 +6,7 @@ from inflection import camelize, underscore
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy_utils.generic import GenericRelationshipProperty
 
-from ..types import SQLAlchemyObjectTypeOptions
+from ..options import SQLAlchemyObjectTypeOptions
 from ..api import (
     construct_fields,
     dispatch,

@@ -4,19 +4,22 @@ from sqlalchemy.orm.exc import NoResultFound
 
 from graphene import Field, ID
 from graphene.relay import Connection
+from graphene.types import Argument
 from graphene.types.objecttype import ObjectType, ObjectTypeOptions
 from graphene.types.utils import yank_fields_from_attrs
 
-from .api import construct_fields, dispatch, get_connection, get_interfaces, get_registry, set_registry_class
+from .api import (
+    construct_fields,
+    dispatch,
+    generate_type,
+    get_connection,
+    get_interfaces,
+    get_registry,
+    set_registry_class
+)
+from .contrib import SQLAlchemyKeysInputObjectType
+from .options import SQLAlchemyObjectTypeOptions
 from .utils import get_query, check_connection, check_mapped_class, check_mapped_instance
-
-
-class SQLAlchemyObjectTypeOptions(ObjectTypeOptions):
-    model = None  # type: Model
-    connection = None  # type: Type[Connection]
-    id = None  # type: str
-    arguments = None
-    resolver = None  # type: Callable
 
 
 class SQLAlchemyObjectType(ObjectType):
@@ -77,16 +80,26 @@ class SQLAlchemyObjectType(ObjectType):
         return tuple(keys) if len(keys) > 1 else keys[0]
 
     @classmethod
-    def get_instance(cls, model, info, id):
+    def get_instance(cls, model, info, input):
+        keys = inspect(model).primary_key
+        key_input = {}
+        for key in keys:
+            name = key.name
+            if name in kwargs['input']:
+                key_input[key.name] = kwargs['input'].pop(name)
+
         try:
-            return cls.get_query(info).get(id)
+            return cls.get_query(info).get(key_input.values())
         except NoResultFound:
             return None
 
     @classmethod
     def Field(cls, *args, **kwargs):
         args = cls._meta.arguments or {
-            'id': ID(required=True)
+            'input': Argument(
+                generate_type(SQLAlchemyKeysInputObjectType, cls._meta.model),
+                required=True
+            )
         }
         resolver = cls._meta.resolver or cls.get_instance
 

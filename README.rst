@@ -352,9 +352,9 @@ with the appropriate arguments and output, provided those have been specified on
 `SQLAlchemyDeleteMutation`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-- Defines a ``mutate`` method that converts the ``SQLAlchemyDeleteInputObjectType`` to a model
+- Defines a ``mutate`` method that converts the ``SQLAlchemyKeysInputObjectType`` to a model
   instance and commits the changes.
-- At class creation, automatically creates the necessary ``SQLAlchemyDeleteInputObjectType`` and
+- At class creation, automatically creates the necessary ``SQLAlchemyKeysInputObjectType`` and
   ``SQLAlchemyObjectType`` classes as the ``input`` and ``output``, respectively.
 - Places those in ``cls._meta.arguments`` ``cls._meta.output`` respectively.
 
