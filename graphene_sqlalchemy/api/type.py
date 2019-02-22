@@ -2,7 +2,19 @@ from enum import Enum as PyEnum
 from functools import partial
 from typing import Union
 
-from graphene import ID, Boolean, Enum, Field, Float, Int, List, String, DateTime, JSONString
+from graphene import (
+    ID,
+    Boolean,
+    Enum,
+    Field,
+    Float,
+    Int,
+    List,
+    String,
+    Date,
+    DateTime,
+    JSONString
+)
 from graphene.types.base import BaseType
 from sqlalchemy import inspect
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
@@ -87,6 +99,16 @@ def convert_type(
     _type: types.DateTime,
 ) -> DateTime:
     return DateTime
+
+
+@dispatch()
+def convert_type(
+    cls: BaseType,
+    model: DeclarativeMeta,
+    column: Column,
+    _type: types.Date,
+) -> Date:
+    return Date
 
 
 @dispatch()

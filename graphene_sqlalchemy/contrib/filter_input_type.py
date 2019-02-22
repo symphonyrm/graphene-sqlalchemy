@@ -71,6 +71,17 @@ class DateTimeFilterInputObjectType(FilterInputObjectType):
     notEqualTo = graphene.DateTime()
 
 
+class DateFilterInputObjectType(FilterInputObjectType):
+    equalTo = graphene.DateTime()
+    greaterThan = graphene.DateTime()
+    greaterThanOrEqualTo = graphene.DateTime()
+    inList = graphene.List(graphene.DateTime)
+    isNull = graphene.Boolean()
+    lessThan = graphene.DateTime()
+    lessThanOrEqualTo = graphene.DateTime()
+    notEqualTo = graphene.DateTime()
+
+
 class SignedInt32FilterInputObjectType(FilterInputObjectType):
     equalTo = SignedInt32()
     greaterThan = SignedInt32()
@@ -277,6 +288,16 @@ def convert_type(
     _type: types.DateTime
 ) -> DateTimeFilterInputObjectType:
     return DateTimeFilterInputObjectType
+
+
+@dispatch()
+def convert_type(
+    cls: SQLAlchemyFilterInputObjectType,
+    model: DeclarativeMeta,
+    column: Column,
+    _type: types.Date
+) -> DateFilterInputObjectType:
+    return DateFilterInputObjectType
 
 
 @dispatch()

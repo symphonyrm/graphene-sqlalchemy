@@ -72,7 +72,6 @@ JSONLike = (
 
 StringLike = (
     types.BigInteger,
-    types.Date,
     types.Time,
     types.String,
     types.Text,
