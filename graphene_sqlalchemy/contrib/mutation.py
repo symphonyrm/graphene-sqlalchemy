@@ -7,7 +7,7 @@ from sqlalchemy.ext.declarative.api import DeclarativeMeta
 
 from ..api import convert_to_instance, dispatch, generate_type
 from .create_input_type import SQLAlchemyCreateInputObjectType
-from .delete_input_type import SQLAlchemyKeysInputObjectType
+from .keys_input_type import SQLAlchemyKeysInputObjectType
 from .edit_input_type import SQLAlchemyEditInputObjectType
 from .filter_object_type import SQLAlchemyFilterObjectType
 from ..utils import get_session
