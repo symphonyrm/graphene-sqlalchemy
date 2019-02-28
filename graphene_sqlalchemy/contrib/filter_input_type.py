@@ -203,23 +203,21 @@ def convert_to_query(
     relationship: GenericRelationshipProperty,
     query: Query
 ) -> Query:
-    if hasattr(relationship, '_map_discriminator2type'):
-        attr_pairs = relationship.discriminator_model_pairs()
-        for discriminator, foreign_model in attr_pairs:
-            key = 'filter{}On{}'.format(
-                foreign_model.__name__,
-                camelize(relationship.key)
-            )
-            if key in inputs:
-                entity_input = inputs[key]
-                entity_model = entity_input._meta.model
-                entity_attr = getattr(model, relationship.key)
-                entity_id = getattr(model, relationship.id[0].key)
+    for foreign_model in relationship.get_all_related_models():
+        key = 'filter{}On{}'.format(
+            foreign_model.__name__,
+            camelize(relationship.key)
+        )
+        if key in inputs:
+            entity_input = inputs[key]
+            entity_model = entity_input._meta.model
+            entity_attr = getattr(model, relationship.key)
+            entity_id = getattr(model, relationship.id[0].key)
 
-                query = query.filter(entity_attr.is_type(entity_model))
-                query = query.join(entity_model, entity_id == entity_model.id)
-                query = convert_to_query(entity_input, entity_model, query)
-                break
+            query = query.filter(entity_attr.is_type(entity_model))
+            query = query.join(entity_model, entity_id == entity_model.id)
+            query = convert_to_query(entity_input, entity_model, query)
+            break
 
     return query
 
@@ -230,15 +228,13 @@ def construct_fields(
     model: DeclarativeMeta,
     relationship: GenericRelationshipProperty,
 ):
-    if hasattr(relationship, '_map_discriminator2type'):
-        attr_pairs = relationship.discriminator_model_pairs()
-        for discriminator, foreign_model in attr_pairs:
-            key = 'filter{}On{}'.format(
-                foreign_model.__name__,
-                camelize(relationship.key)
-            )
-            generic = partial(dynamic_type, cls, model, relationship, foreign_model)
-            setattr(cls, key, graphene.Dynamic(generic))
+    for foreign_model in relationship.get_all_related_models():
+        key = 'filter{}On{}'.format(
+            foreign_model.__name__,
+            camelize(relationship.key)
+        )
+        generic = partial(dynamic_type, cls, model, relationship, foreign_model)
+        setattr(cls, key, graphene.Dynamic(generic))
 
 
 @dispatch()

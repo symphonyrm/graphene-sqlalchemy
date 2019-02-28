@@ -72,8 +72,6 @@ def construct_fields(
     model: DeclarativeMeta,
     relationship: GenericRelationshipProperty,
 ):
-    if hasattr(relationship, '_map_discriminator2type'):
-        attr_pairs = relationship.discriminator_model_pairs()
-        models = [pair[1] for pair in attr_pairs]
-        generic = partial(dynamic_type, cls, model, relationship, models)
-        setattr(cls, relationship.key, Dynamic(generic))
+    foreign_models = relationship.get_all_related_models()
+    generic = partial(dynamic_type, cls, model, relationship, foreign_models)
+    setattr(cls, relationship.key, Dynamic(generic))

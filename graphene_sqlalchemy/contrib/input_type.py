@@ -54,15 +54,13 @@ def construct_fields(
     model: DeclarativeMeta,
     relationship: GenericRelationshipProperty,
 ):
-    if hasattr(relationship, '_map_discriminator2type'):
-        attr_pairs = relationship.discriminator_model_pairs()
-        for discriminator, foreign_model in attr_pairs:
-            create_key = 'createAndAttach{}To{}'.format(
-                foreign_model.__name__,
-                camelize(relationship.key)
-            )
-            generic = partial(dynamic_type, cls, model, relationship, foreign_model)
-            setattr(cls, create_key, graphene.Dynamic(generic))
+    for foreign_model in relationship.get_all_related_models():
+        create_key = 'createAndAttach{}To{}'.format(
+            foreign_model.__name__,
+            camelize(relationship.key)
+        )
+        generic = partial(dynamic_type, cls, model, relationship, foreign_model)
+        setattr(cls, create_key, graphene.Dynamic(generic))
 
 
 @dispatch()
@@ -71,20 +69,18 @@ def convert_to_instance(
     instance: object, # TODO: See if we can get a better type here
     relationship: GenericRelationshipProperty
 ):
-    if hasattr(relationship, '_map_discriminator2type'):
-        attr_pairs = relationship.discriminator_model_pairs()
-        for key, foreign_model in attr_pairs:
-            create_key = 'createAndAttach{}To{}'.format(
-                foreign_model.__name__,
-                camelize(relationship.key)
+    for foreign_model in relationship.get_all_related_models():
+        create_key = 'createAndAttach{}To{}'.format(
+            foreign_model.__name__,
+            camelize(relationship.key)
+        )
+        if create_key in inputs:
+            entity_input = inputs[create_key]
+            setattr(
+                instance,
+                relationship.key,
+                convert_to_instance(entity_input, entity_input._meta.model)
             )
-            if create_key in inputs:
-                entity_input = inputs[create_key]
-                setattr(
-                    instance,
-                    relationship.key,
-                    convert_to_instance(entity_input, entity_input._meta.model)
-                )
-                break
+            break
 
     return instance
