@@ -1,7 +1,8 @@
 import functools
-from collections import OrderedDict
+from collections import Iterable, OrderedDict
 from inspect import getmro
 from operator import iconcat
+from six import string_types
 from typing import Dict
 
 from graphene import Dynamic, Field, List, String, Union
@@ -196,9 +197,8 @@ def dynamic_type(cls, model, relationship, foreign_models):
     #       have the necessary `uselist` or `direction` fields.
     # TODO: Think about changing the registry interface
     #       This feels clunky
-    # direction = relationship.direction
     registry = get_registry(set_registry_class(cls))
-    if type(foreign_models) is list:
+    if isinstance(foreign_models, Iterable) and not isinstance(foreign_models, string_types):
         _types = [
             registry.get_type_for_model(foreign)
             for foreign in foreign_models
