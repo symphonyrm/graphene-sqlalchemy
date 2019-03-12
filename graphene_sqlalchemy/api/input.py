@@ -2,7 +2,7 @@ from datetime import datetime
 from graphene.types.base import BaseType
 from sqlalchemy import Column
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
-from sqlalchemy.orm import RelationshipProperty
+from sqlalchemy.orm import RelationshipProperty, Session
 from sqlalchemy_utils.generic import GenericRelationshipProperty
 
 from .field_types import OrmLike
@@ -23,13 +23,14 @@ PrimitiveLike = (bool, datetime, float, int, str, type(None))
 @dispatch()
 def convert_to_instance(
     inputs: BaseType,
-    model: DeclarativeMeta
+    model: DeclarativeMeta,
+    session: Session
 ):
     orm_prop_list = order_orm_properties(model)
     instance = model()
 
     for orm_prop in orm_prop_list:
-        instance = convert_to_instance(inputs, instance, orm_prop)
+        instance = convert_to_instance(inputs, instance, orm_prop, session)
     return instance
 
 
@@ -37,7 +38,8 @@ def convert_to_instance(
 def convert_to_instance(
     inputs: BaseType,
     instance: object,
-    column: Column
+    column: Column,
+    session: Session
 ):
     input_name = convert_name(inputs, inputs._meta.model, column)
     if input_name in inputs.keys():
@@ -50,14 +52,15 @@ def convert_to_instance(
 def convert_to_instance(
     inputs: BaseType,
     instance: object,
-    relationship: RelationshipProperty
+    relationship: RelationshipProperty,
+    session: Session
 ):
     input_name = convert_name(inputs, inputs._meta.model, relationship)
     if input_name in inputs.keys():
         setattr(
             instance,
             relationship.key,
-            convert_to_instance(inputs[input_name], relationship.mapper.entity)
+            convert_to_instance(inputs[input_name], relationship.mapper.entity, session)
         )
 
     return instance
@@ -66,10 +69,11 @@ def convert_to_instance(
 @dispatch()
 def convert_to_instance(
     inputs: list,
-    model: DeclarativeMeta
+    model: DeclarativeMeta,
+    session: Session
 ):
     return [
-        convert_to_instance(item, model)
+        convert_to_instance(item, model, session)
         for item in inputs
     ]
 
@@ -78,12 +82,13 @@ def convert_to_instance(
 def convert_to_instance(
     inputs: list,
     instance: object,
-    relationship: RelationshipProperty
+    relationship: RelationshipProperty,
+    session: Session
 ):
     input_name = convert_name(inputs, inputs._meta.model, relationship)
     if input_name in inputs.keys():
         value = [
-            convert_to_instance(item, relationship.mapper.entity)
+            convert_to_instance(item, relationship.mapper.entity, session)
             for item in inputs
         ]
 
@@ -96,6 +101,7 @@ def convert_to_instance(
 def convert_to_instance(
     inputs: BaseType,
     instance: object,
-    relationship: GenericRelationshipProperty
+    relationship: GenericRelationshipProperty,
+    session: Session
 ):
     return instance

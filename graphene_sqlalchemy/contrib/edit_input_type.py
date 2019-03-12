@@ -1,13 +1,16 @@
-import inflection
+from functools import partial
+from inflection import camelize, underscore
 
 from graphene import Dynamic, Field, List
+from graphql import GraphQLError
 from sqlalchemy import Column, inspect
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
-from sqlalchemy.orm import interfaces, RelationshipProperty
+from sqlalchemy.orm import interfaces, RelationshipProperty, Session
+from sqlalchemy_utils.generic import GenericRelationshipProperty
 
 from .create_input_type import SQLAlchemyCreateInputObjectType
 from .input_type import SQLAlchemyInputObjectType
-from ..api import dispatch, get_registry
+from ..api import dispatch, dynamic_type, get_registry, order_orm_properties
 
 
 class SQLAlchemyEditInputObjectType(SQLAlchemyInputObjectType):
@@ -27,7 +30,7 @@ def ignore_field(
     column: Column
 ) -> bool:
     auto_fields = ['created_at', 'updated_at']
-    is_auto = bool(column.server_default) and inflection.underscore(column.name) in auto_fields
+    is_auto = bool(column.server_default) and underscore(column.name) in auto_fields
 
     return is_auto
 
@@ -95,22 +98,89 @@ def construct_fields(
     model: DeclarativeMeta,
     relationship: RelationshipProperty,
 ):
-    name = convert_name(cls, model, relationship)
+    create_key = 'create_and_attach_to_{name}'.format(name=relationship.key)
+    edit_key = 'edit_and_attach_to_{name}'.format(name=relationship.key)
     direction = relationship.direction
-    model = relationship.mapper.entity
+    foreign_model = relationship.mapper.entity
 
-    def dynamic_type():
-        # TODO: Think about changing the registry interface
-        #       This feels clunky
-        registry = get_registry(SQLAlchemyCreateInputObjectType)
-        _type = registry.get_type_for_model(model)
-        if not _type:
-            return None
-        if direction == interfaces.MANYTOONE or not relationship.uselist:
-            return Field(_type)
-        elif direction in (interfaces.ONETOMANY, interfaces.MANYTOMANY):
-            if _type._meta.connection:
-                return createConnectionField(_type._meta.connection)
-            return Field(List(_type))
+    if direction == interfaces.MANYTOONE or not relationship.uselist:
+        uselist = False
+    elif direction in (interfaces.ONETOMANY, interfaces.MANYTOMANY):
+        uselist = True
 
-    setattr(cls, name, Dynamic(dynamic_type))
+    create_dynamic = partial(dynamic_type, SQLAlchemyCreateInputObjectType, model, relationship, foreign_model, uselist)
+    edit_dynamic = partial(dynamic_type, SQLAlchemyEditInputObjectType, model, relationship, foreign_model, uselist)
+    setattr(cls, create_key, Dynamic(create_dynamic))
+    setattr(cls, edit_key, Dynamic(edit_dynamic))
+
+
+@dispatch()
+def construct_fields(
+    cls: SQLAlchemyEditInputObjectType,
+    model: DeclarativeMeta,
+    relationship: GenericRelationshipProperty,
+):
+    for foreign_model in relationship.get_all_related_models():
+        create_key = 'createAndAttach{}To{}'.format(
+            foreign_model.__name__,
+            camelize(relationship.key)
+        )
+        edit_key = 'editAndAttach{}To{}'.format(
+            foreign_model.__name__,
+            camelize(relationship.key)
+        )
+        create_dynamic = partial(dynamic_type, SQLAlchemyCreateInputObjectType, model, relationship, foreign_model)
+        edit_dynamic = partial(dynamic_type, SQLAlchemyEditInputObjectType, model, relationship, foreign_model)
+        setattr(cls, create_key, Dynamic(create_dynamic))
+        setattr(cls, edit_key, Dynamic(edit_dynamic))
+
+
+@dispatch()
+def convert_to_instance(
+    inputs: SQLAlchemyEditInputObjectType,
+    model: DeclarativeMeta,
+    session: Session
+):
+    keys = inspect(model).primary_key
+    key_input = {}
+    for key in keys:
+        name = key.name
+        if name in inputs:
+            key_input[key.name] = inputs.pop(name)
+
+    orm_prop_list = order_orm_properties(model)
+    instance = session.query(model).get(key_input.values())
+    if not instance:
+        raise GraphQLError(
+            'No such instance of type {} with keys {}'.format(
+                model.__name__,
+                key_input))
+
+    for orm_prop in orm_prop_list:
+        instance = convert_to_instance(inputs, instance, orm_prop, session)
+    return instance
+
+
+@dispatch()
+def convert_to_instance(
+    inputs: SQLAlchemyEditInputObjectType,
+    instance: object,
+    relationship: RelationshipProperty,
+    session: Session
+):
+    input_name = None
+    create_key = 'create_and_attach_to_{name}'.format(name=relationship.key)
+    edit_key = 'edit_and_attach_to_{name}'.format(name=relationship.key)
+    if create_key in inputs.keys():
+        input_name = create_key
+    elif edit_key in inputs.keys():
+        input_name = edit_key
+
+    if input_name:
+        setattr(
+            instance,
+            relationship.key,
+            convert_to_instance(inputs[input_name], relationship.mapper.entity, session)
+        )
+
+    return instance

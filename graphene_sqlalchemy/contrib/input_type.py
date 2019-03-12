@@ -4,6 +4,7 @@ import graphene
 from graphene.types.utils import yank_fields_from_attrs
 from inflection import camelize, underscore
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
+from sqlalchemy.orm import Session
 from sqlalchemy_utils.generic import GenericRelationshipProperty
 
 from ..options import SQLAlchemyObjectTypeOptions
@@ -67,7 +68,8 @@ def construct_fields(
 def convert_to_instance(
     inputs: SQLAlchemyInputObjectType,
     instance: object, # TODO: See if we can get a better type here
-    relationship: GenericRelationshipProperty
+    relationship: GenericRelationshipProperty,
+    session: Session
 ):
     for foreign_model in relationship.get_all_related_models():
         create_key = 'createAndAttach{}To{}'.format(
@@ -79,7 +81,7 @@ def convert_to_instance(
             setattr(
                 instance,
                 relationship.key,
-                convert_to_instance(entity_input, entity_input._meta.model)
+                convert_to_instance(entity_input, entity_input._meta.model, session)
             )
             break
 

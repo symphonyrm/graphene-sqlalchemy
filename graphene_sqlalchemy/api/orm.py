@@ -160,26 +160,15 @@ def construct_fields(
 ) -> Dict[str, Dynamic]:
     name = convert_name(cls, model, relationship)
     direction = relationship.direction
-    model = relationship.mapper.entity
+    foreign_model = relationship.mapper.entity
 
-    def dynamic_type():
-        # TODO: Think about changing the registry interface
-        #       This feels clunky
-        registry = get_registry(set_registry_class(cls))
-        _type = registry.get_type_for_model(model)
-        if not _type:
-            return None
-        if direction == interfaces.MANYTOONE or not relationship.uselist:
-            return Field(_type)
-        elif direction in (interfaces.ONETOMANY, interfaces.MANYTOMANY):
-            if _type._meta.connection:
-                return createConnectionField(_type._meta.connection)
-            return Field(List(_type))
+    if direction == interfaces.MANYTOONE or not relationship.uselist:
+        uselist = False
+    elif direction in (interfaces.ONETOMANY, interfaces.MANYTOMANY):
+        uselist = True
 
-    # return {
-    #     name: Dynamic(dynamic_type)
-    # }
-    setattr(cls, name, Dynamic(dynamic_type))
+    generic = functools.partial(dynamic_type, cls, model, relationship, foreign_model, uselist)
+    setattr(cls, name, Dynamic(generic))
 
 
 @dispatch()
@@ -191,13 +180,10 @@ def construct_fields(
     pass
 
 
-def dynamic_type(cls, model, relationship, foreign_models):
-    # TODO: Figure out how to unify the handling of relationship
-    #       and generic relationship. generics don't appear to
-    #       have the necessary `uselist` or `direction` fields.
+def dynamic_type(registry_class, model, relationship, foreign_models, uselist=False):
     # TODO: Think about changing the registry interface
     #       This feels clunky
-    registry = get_registry(set_registry_class(cls))
+    registry = get_registry(set_registry_class(registry_class))
     if isinstance(foreign_models, Iterable) and not isinstance(foreign_models, string_types):
         _types = [
             registry.get_type_for_model(foreign)
@@ -217,4 +203,10 @@ def dynamic_type(cls, model, relationship, foreign_models):
                     'types': _types
                 }
             })()
-    return Field(_types)
+    else:
+        if not uselist:
+            return Field(_types)
+        else:
+            if _types._meta.connection:
+                return createConnectionField(_types._meta.connection)
+            return Field(List(_types))

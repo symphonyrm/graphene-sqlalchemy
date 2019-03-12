@@ -42,6 +42,7 @@ class FilterInputObjectType(InputObjectType):
 class IDFilterInputObjectType(FilterInputObjectType):
     equalTo = graphene.ID()
     inList = graphene.List(graphene.String)
+    notInList = graphene.List(graphene.String)
     isNull = graphene.Boolean()
     notEqualTo = graphene.String()
 
@@ -49,6 +50,7 @@ class IDFilterInputObjectType(FilterInputObjectType):
 class StringFilterInputObjectType(FilterInputObjectType):
     equalTo = graphene.String()
     inList = graphene.List(graphene.String)
+    notInList = graphene.List(graphene.String)
     isNull = graphene.Boolean()
     isLike = graphene.String()
     notEqualTo = graphene.String()
@@ -65,6 +67,7 @@ class DateTimeFilterInputObjectType(FilterInputObjectType):
     greaterThan = graphene.DateTime()
     greaterThanOrEqualTo = graphene.DateTime()
     inList = graphene.List(graphene.DateTime)
+    notInList = graphene.List(graphene.DateTime)
     isNull = graphene.Boolean()
     lessThan = graphene.DateTime()
     lessThanOrEqualTo = graphene.DateTime()
@@ -76,6 +79,7 @@ class DateFilterInputObjectType(FilterInputObjectType):
     greaterThan = graphene.DateTime()
     greaterThanOrEqualTo = graphene.DateTime()
     inList = graphene.List(graphene.DateTime)
+    notInList = graphene.List(graphene.DateTime)
     isNull = graphene.Boolean()
     lessThan = graphene.DateTime()
     lessThanOrEqualTo = graphene.DateTime()
@@ -87,6 +91,7 @@ class SignedInt32FilterInputObjectType(FilterInputObjectType):
     greaterThan = SignedInt32()
     greaterThanOrEqualTo = SignedInt32()
     inList = graphene.List(SignedInt32)
+    notInList = graphene.List(SignedInt32)
     isNull = graphene.Boolean()
     lessThan = SignedInt32()
     lessThanOrEqualTo = SignedInt32()
@@ -98,6 +103,7 @@ class FloatFilterInputObjectType(FilterInputObjectType):
     greaterThan = graphene.Float()
     greaterThanOrEqualTo = graphene.Float()
     inList = graphene.List(graphene.Float)
+    notInList = graphene.List(graphene.Float)
     isNull = graphene.Boolean()
     lessThan = graphene.Float()
     lessThanOrEqualTo = graphene.Float()
@@ -118,6 +124,8 @@ def convert_comparator(comparator):
         return 'ge'
     elif comparator == 'inList':
         return 'in'
+    elif comparator == 'notInList':
+        return 'notin'
     elif comparator == 'lessThan':
         return 'lt'
     elif comparator == 'lessThanOrEqualTo':
@@ -214,6 +222,7 @@ def convert_to_query(
             entity_attr = getattr(model, relationship.key)
             entity_id = getattr(model, relationship.id[0].key)
 
+            # TODO: Fix this, looks like it fails on the `is_type` call
             query = query.filter(entity_attr.is_type(entity_model))
             query = query.join(entity_model, entity_id == entity_model.id)
             query = convert_to_query(entity_input, entity_model, query)

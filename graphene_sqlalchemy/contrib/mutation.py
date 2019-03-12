@@ -72,7 +72,7 @@ class SQLAlchemyCreateMutation(SQLAlchemyMutation):
 
     @classmethod
     def mutate_session(cls, session, model, **kwargs):
-        instance = convert_to_instance(kwargs['input'], model)
+        instance = convert_to_instance(kwargs['input'], model, session)
         session.add(instance)
 
         return instance
@@ -103,27 +103,9 @@ class SQLAlchemyEditMutation(SQLAlchemyMutation):
 
     @classmethod
     def mutate_session(cls, session, model, **kwargs):
-        keys = inspect(model).primary_key
-        key_input = {}
-        for key in keys:
-            name = key.name
-            if name in kwargs['input']:
-                key_input[key.name] = kwargs['input'].pop(name)
+        instance = convert_to_instance(kwargs['input'], model, session)
 
-        old_instance = session.query(model).get(key_input.values())
-        if not old_instance:
-            raise GraphQLError(
-                'No such instance of type {} with keys {}'.format(
-                    model.__name__,
-                    key_input))
-
-        new_instance = convert_to_instance(kwargs['input'], model)
-
-        for key, value in new_instance.__dict__.items():
-            if not key.startswith('_'):
-                setattr(old_instance, key, value)
-
-        return old_instance
+        return instance
 
 
 @dispatch()
