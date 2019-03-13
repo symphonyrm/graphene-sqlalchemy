@@ -169,19 +169,28 @@ def convert_to_instance(
     relationship: RelationshipProperty,
     session: Session
 ):
-    input_name = None
     create_key = 'create_and_attach_to_{name}'.format(name=relationship.key)
     edit_key = 'edit_and_attach_to_{name}'.format(name=relationship.key)
-    if create_key in inputs.keys():
-        input_name = create_key
-    elif edit_key in inputs.keys():
-        input_name = edit_key
+    rel_keys = [create_key, edit_key]
 
-    if input_name:
-        setattr(
-            instance,
-            relationship.key,
-            convert_to_instance(inputs[input_name], relationship.mapper.entity, session)
-        )
+    for key in rel_keys:
+        if key in inputs.keys():
+            rel_input = inputs[key]
+            if type(rel_input) is list:
+                current_rels = getattr(instance, relationship.key)
+                new_rels = convert_to_instance(
+                    rel_input,
+                    relationship.mapper.entity,
+                    session
+                )
+                rels = list(set(current_rels + new_rels))
+            else:
+                rels = convert_to_instance(rel_input, relationship.mapper.entity, session)
+
+            setattr(
+                instance,
+                relationship.key,
+                rels
+            )
 
     return instance
