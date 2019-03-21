@@ -41,12 +41,20 @@ def ignore_field(
     model: DeclarativeMeta,
     relationship: RelationshipProperty
 ) -> bool:
-    is_dual_key = any([
-        column.primary_key and bool(column.foreign_keys)
-        for column in relationship.local_columns
-    ])
+    primary_model_relationship = False
 
-    return is_dual_key
+    foreign_columns = relationship.mapper.columns.values()
+    dual_keys = [
+        column
+        for column in relationship.local_columns
+        if bool(column.primary_key) and bool(column.foreign_keys)
+    ]
+    for key in dual_keys:
+        for foreign in key.foreign_keys:
+            if foreign.column in foreign_columns:
+                primary_model_relationship = True
+
+    return primary_model_relationship
 
 
 @dispatch()
