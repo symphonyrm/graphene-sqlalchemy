@@ -132,6 +132,8 @@ def convert_comparator(comparator):
         return 'le'
     elif comparator == 'notEqualTo':
         return 'ne'
+    elif comparator == 'isLike':
+        return 'like'
 
 
 @dispatch()
@@ -170,7 +172,7 @@ def convert_to_query(
     query: Query
 ) -> Query:
     filter_name = convert_name(filters, model, column)
-    if filter_name in filters.keys():
+    if filter_name in filters.keys() and filters[filter_name]:
         for comparator, value in filters[filter_name].items():
             op = convert_comparator(comparator)
             attr = [
@@ -193,14 +195,20 @@ def convert_to_query(
     filter_name = convert_name(filters, filters._meta.model, relationship)
     if filter_name in filters.keys():
         _filter = filters[filter_name]
-        model = relationship.mapper.entity
-        query = query.join(model)
+        if not _filter:
+            return query
+        elif type(_filter) == list and not all([bool(entry) for entry in _filter]):
+            return query
+
+        rel_attribute = getattr(model, relationship.key)
+        foreign_model = relationship.mapper.entity
+        query = query.join(foreign_model, rel_attribute)
 
         if type(_filter) == list:
             for item in _filter:
-                query = convert_to_query(item, model, query)
+                query = convert_to_query(item, foreign_model, query)
             return query.distinct()
-        return convert_to_query(filters[filter_name], model, query)
+        return convert_to_query(_filter, foreign_model, query)
     return query
 
 
