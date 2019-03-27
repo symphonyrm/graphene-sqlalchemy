@@ -1,5 +1,5 @@
 from graphql import GraphQLError
-from graphene.types import Argument, Field, Mutation, ID
+from graphene.types import Argument, Field, List, Mutation, ID
 from graphene.types.mutation import MutationOptions
 from sqlalchemy import inspect
 from sqlalchemy.exc import OperationalError
@@ -96,6 +96,40 @@ def construct_fields(cls: SQLAlchemyCreateMutation, model: DeclarativeMeta):
     }
 
 
+class SQLAlchemyBulkCreateMutation(SQLAlchemyMutation):
+    class Meta:
+        abstract = True
+
+
+    @classmethod
+    def mutate_session(cls, session, model, **kwargs):
+        instances = []
+        for input_type in kwargs['inputs']:
+            instance = convert_to_instance(input_type, model, session)
+            instances.append(instance)
+            session.add(instance)
+
+        return instances
+
+
+@dispatch()
+def convert_name(cls: SQLAlchemyBulkCreateMutation, model: DeclarativeMeta):
+    return 'BulkCreate{}'.format(model.__name__)
+
+
+@dispatch()
+def construct_fields(cls: SQLAlchemyBulkCreateMutation, model: DeclarativeMeta):
+    return {
+        'arguments': {
+            'inputs': Argument(
+                List(generate_type(SQLAlchemyCreateInputObjectType, model)),
+                required=True,
+            )
+        },
+        'output': List(generate_type(SQLAlchemyFilterObjectType, model))
+    }
+
+
 class SQLAlchemyEditMutation(SQLAlchemyMutation):
     class Meta:
         abstract = True
@@ -123,6 +157,40 @@ def construct_fields(cls: SQLAlchemyEditMutation, model: DeclarativeMeta):
             )
         },
         'output': generate_type(SQLAlchemyFilterObjectType, model)
+    }
+
+
+class SQLAlchemyBulkEditMutation(SQLAlchemyMutation):
+    class Meta:
+        abstract = True
+
+
+    @classmethod
+    def mutate_session(cls, session, model, **kwargs):
+        instances = []
+        for input_type in kwargs['inputs']:
+            instance = convert_to_instance(input_type, model, session)
+            instances.append(instance)
+            session.add(instance)
+
+        return instances
+
+
+@dispatch()
+def convert_name(cls: SQLAlchemyBulkEditMutation, model: DeclarativeMeta):
+    return 'BulkEdit{}'.format(model.__name__)
+
+
+@dispatch()
+def construct_fields(cls: SQLAlchemyBulkEditMutation, model: DeclarativeMeta):
+    return {
+        'arguments': {
+            'inputs': Argument(
+                List(generate_type(SQLAlchemyEditInputObjectType, model)),
+                required=True,
+            )
+        },
+        'output': List(generate_type(SQLAlchemyFilterObjectType, model))
     }
 
 
@@ -167,4 +235,48 @@ def construct_fields(cls: SQLAlchemyDeleteMutation, model: DeclarativeMeta):
             )
         },
         'output': generate_type(SQLAlchemyFilterObjectType, model)
+    }
+
+
+class SQLAlchemyBulkDeleteMutation(SQLAlchemyMutation):
+    class Meta:
+        abstract = True
+
+
+    @classmethod
+    def mutate_session(cls, session, model, **kwargs):
+        keys = inspect(model).primary_key
+        keys_filter = []
+        for key in keys:
+            name = key.name
+            key_input = []
+
+            for input_type in kwargs['inputs']:
+                if name in input_type:
+                    key_input.append(input_type.pop(name))
+
+            keys_filter.append(key.in_(key_input))
+
+        instances = session.query(model).filter(*keys_filter).all()
+        for instance in instances:
+            session.delete(instance)
+
+        return instances
+
+
+@dispatch()
+def convert_name(cls: SQLAlchemyBulkDeleteMutation, model: DeclarativeMeta):
+    return 'BulkDelete{}'.format(model.__name__)
+
+
+@dispatch()
+def construct_fields(cls: SQLAlchemyBulkDeleteMutation, model: DeclarativeMeta):
+    return {
+        'arguments': {
+            'inputs': Argument(
+                List(generate_type(SQLAlchemyKeysInputObjectType, model)),
+                required=True,
+            )
+        },
+        'output': List(generate_type(SQLAlchemyFilterObjectType, model))
     }

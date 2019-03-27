@@ -1,6 +1,7 @@
 from sqlalchemy import inspect
 from sqlalchemy.orm.exc import NoResultFound
 
+from graphql import GraphQLError
 from graphene import Field, ID
 from graphene.relay import Connection
 from graphene.types import Argument
@@ -87,10 +88,14 @@ class SQLAlchemyObjectType(ObjectType):
             if name in input:
                 key_input[key.name] = input.pop(name)
 
-        try:
-            return cls.get_query(info).get(key_input.values())
-        except NoResultFound:
-            return None
+        instance = cls.get_query(info).get(key_input.values())
+        if not instance:
+            raise GraphQLError(
+                'No such instance of type {} with keys {}'.format(
+                    cls._meta.model.__name__,
+                    key_input))
+
+        return instance
 
     @classmethod
     def Field(cls, *args, **kwargs):

@@ -4,8 +4,11 @@ from inflection import pluralize, singularize, underscore
 
 from .mutation import (
     SQLAlchemyCreateMutation,
+    SQLAlchemyBulkCreateMutation,
     SQLAlchemyDeleteMutation,
+    SQLAlchemyBulkDeleteMutation,
     SQLAlchemyEditMutation,
+    SQLAlchemyBulkEditMutation,
 )
 from ..types import SQLAlchemyObjectType
 from ..api import generate_type, get_connection_field
@@ -47,6 +50,9 @@ class SQLAlchemyAutogenMutations(ObjectType):
             SQLAlchemyEditMutation,
             SQLAlchemyCreateMutation,
             SQLAlchemyDeleteMutation,
+            SQLAlchemyBulkCreateMutation,
+            SQLAlchemyBulkDeleteMutation,
+            SQLAlchemyBulkEditMutation,
         ]
 
         for model in models:
