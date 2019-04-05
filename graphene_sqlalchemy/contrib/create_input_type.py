@@ -1,6 +1,6 @@
-import inflection
+from inflection import underscore
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column, DefaultClause, FetchedValue, inspect
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy.orm import RelationshipProperty
 
@@ -26,10 +26,20 @@ def ignore_field(
     column: Column
 ) -> bool:
     auto_fields = ['created_at', 'updated_at']
-    is_auto = bool(column.server_default) and inflection.underscore(column.name) in auto_fields
-    is_primary_key = bool(column.primary_key) and column.autoincrement and not column.foreign_keys
+    default = column.server_default
+    is_auto = bool(default) and underscore(column.name) in auto_fields
+    is_generated = (
+        bool(default)
+        and isinstance(default, FetchedValue)
+        and not isinstance(default, DefaultClause)
+    )
+    is_primary_key = (
+        bool(column.primary_key)
+        and column.autoincrement
+        and not column.foreign_keys
+    )
 
-    return is_auto or is_primary_key
+    return is_auto or is_generated or is_primary_key
 
 
 @dispatch()

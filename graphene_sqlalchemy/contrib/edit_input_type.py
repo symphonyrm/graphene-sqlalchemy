@@ -3,7 +3,7 @@ from inflection import camelize, underscore
 
 from graphene import Dynamic, Field, List
 from graphql import GraphQLError
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column, DefaultClause, FetchedValue, inspect
 from sqlalchemy.ext.declarative.api import DeclarativeMeta
 from sqlalchemy.orm import interfaces, RelationshipProperty, Session
 from sqlalchemy_utils.generic import GenericRelationshipProperty
@@ -30,9 +30,15 @@ def ignore_field(
     column: Column
 ) -> bool:
     auto_fields = ['created_at', 'updated_at']
-    is_auto = bool(column.server_default) and underscore(column.name) in auto_fields
+    default = column.server_default
+    is_auto = bool(default) and underscore(column.name) in auto_fields
+    is_generated = (
+        bool(default)
+        and isinstance(default, FetchedValue)
+        and not isinstance(default, DefaultClause)
+    )
 
-    return is_auto
+    return is_auto or is_generated
 
 
 @dispatch()
