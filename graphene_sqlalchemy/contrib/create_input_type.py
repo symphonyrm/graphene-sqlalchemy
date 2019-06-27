@@ -87,4 +87,8 @@ def is_nullable(
         return True
     if is_generic_key(model, column):
         return True
-    return bool(getattr(column, "nullable", True))
+
+    nullable = bool(getattr(column, "nullable", True))
+    has_default = bool(getattr(column, "default"))
+
+    return nullable or has_default
