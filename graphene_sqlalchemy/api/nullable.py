@@ -22,5 +22,5 @@ def is_nullable(cls: type, model: DeclarativeMeta, column: OrmLike) -> bool:
 @dispatch()
 def is_nullable(cls: BaseType, model: DeclarativeMeta, column: Column) -> bool:
     nullable = bool(getattr(column, "nullable", True))
-    has_default = bool(getattr(column, "default"))
+    has_default = bool(getattr(column, "default")) or bool(getattr(column, "server_default"))
     return nullable or has_default
